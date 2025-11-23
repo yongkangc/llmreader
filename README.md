@@ -43,8 +43,19 @@ Quick notes: EPUB and PDF are supported. You can upload through the UI or proces
   - Export to Obsidian/Roam-compatible markdown with wiki links and block references
 
 ### Library Management
-- **Tags**: Organize your library by adding tags to books and filtering by them
-- **Upload Interface**: Drag and drop EPUB or PDF files directly in the browser
+- **Library View**: Grid-based library showing all your books with cover images and metadata
+  - Click any book to start reading from where you left off
+  - Displays book title, author, and assigned tags
+  - Responsive grid layout that adapts to screen size
+- **Upload Interface**: Multiple ways to add books to your library
+  - Drag and drop EPUB or PDF files directly in the browser
+  - Click to browse and select files from your computer
+  - Automatic processing and extraction of book metadata
+  - Duplicate detection prevents re-importing the same book
+- **Tags System**:
+  - Add custom tags to organize and categorize books
+  - Filter library by tags to find books quickly
+  - Multiple tags per book supported
 
 ### Mobile Features
 - **Touch-Optimized**: Full support for text selection and highlighting on mobile
