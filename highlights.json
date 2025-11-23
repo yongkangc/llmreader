@@ -1,0 +1,28 @@
+{
+  "OptionVolatilityandPricingAdvance...Z-Library_data": {
+    "highlights": [
+      {
+        "id": "3535e9d7-1d88-4f3e-a935-1869be64878e",
+        "text": "nderlying contract and the ball’",
+        "chapter_index": 11,
+        "chapter_href": "ch6.html",
+        "start_offset": 4809,
+        "end_offset": 4841,
+        "timestamp": "2025-11-23T15:27:27.811399Z",
+        "note": "",
+        "color": "yellow"
+      },
+      {
+        "id": "0d80567e-4a9f-4dbf-acde-7abc8016aa76",
+        "text": "Normal distribution curves are used to describe the likely outcomes of random events.",
+        "chapter_index": 11,
+        "chapter_href": "ch6.html",
+        "start_offset": 3089,
+        "end_offset": 3174,
+        "timestamp": "2025-11-23T15:31:21.618802Z",
+        "note": "",
+        "color": "yellow"
+      }
+    ]
+  }
+}

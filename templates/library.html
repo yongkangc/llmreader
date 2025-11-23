@@ -73,20 +73,60 @@
         .btn { display: inline-block; background: var(--accent-primary); color: white; text-decoration: none; padding: 8px 15px; border-radius: 4px; font-size: 0.9em; transition: background-color 0.3s; }
         .btn:hover { background: var(--accent-secondary); }
 
-        /* Theme Toggle */
-        .theme-toggle { position: absolute; top: 0; right: 0; background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.3s; }
+        /* Header Actions */
+        .header-wrapper { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .highlights-link { background: var(--accent-primary); color: white; text-decoration: none; padding: 8px 14px; border-radius: 6px; font-weight: 600; transition: all 0.3s; display: inline-flex; align-items: center; gap: 6px; font-size: 0.95em; }
+        .highlights-link:hover { background: var(--accent-primary-hover); }
+        .theme-toggle { background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.3s; }
         .theme-toggle:hover { background: var(--bg-dropzone-hover); border-color: var(--border-dropzone-hover); }
+
+        /* Tag Filter Bar */
+        .tag-filter-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+        .tag-filter-btn { background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 6px 14px; border-radius: 16px; cursor: pointer; font-size: 0.9em; font-family: -apple-system, sans-serif; transition: all 0.3s; }
+        .tag-filter-btn:hover { background: var(--bg-dropzone-hover); border-color: var(--border-dropzone-hover); }
+        .tag-filter-btn.active { background: var(--accent-primary); color: white; border-color: var(--accent-primary); font-weight: 600; }
+
+        /* Tag Badges on Book Cards */
+        .book-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; min-height: 24px; }
+        .tag-badge { display: inline-block; background: var(--accent-primary); color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600; font-family: -apple-system, sans-serif; }
+        .tag-badge.empty-placeholder { opacity: 0; pointer-events: none; }
+
+        /* Edit Tags Button */
+        .edit-tags-btn { display: inline-block; background: transparent; color: var(--accent-primary); border: 1px solid var(--accent-primary); text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 0.85em; cursor: pointer; transition: all 0.3s; margin-top: 10px; }
+        .edit-tags-btn:hover { background: var(--accent-primary); color: white; }
+
+        /* Tag Editor Modal */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .modal.show { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: var(--bg-card); padding: 30px; border-radius: 10px; max-width: 500px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .modal-header { font-size: 1.3em; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+        .modal-subtext { color: var(--text-muted); font-size: 0.9em; margin-bottom: 20px; }
+        .modal-input { width: 100%; padding: 10px; border: 1px solid var(--border-medium); border-radius: 6px; font-size: 1em; background: var(--bg-main); color: var(--text-primary); box-sizing: border-box; }
+        .modal-buttons { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+        .modal-btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.3s; }
+        .modal-btn-primary { background: var(--accent-primary); color: white; }
+        .modal-btn-primary:hover { background: var(--accent-primary-hover); }
+        .modal-btn-secondary { background: var(--border-medium); color: var(--text-primary); }
+        .modal-btn-secondary:hover { background: var(--border-dark); }
     </style>
 </head>
 <body>
     <div class="container">
-        <button class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()" title="Toggle dark mode">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="themeIcon">
-                <!-- Moon icon (default for light mode) -->
-                <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"></path>
-            </svg>
-        </button>
-        <h1>Library</h1>
+        <div class="header-wrapper">
+            <h1 style="margin: 0; border: none; padding: 0;">Library</h1>
+            <div class="header-actions">
+                <a href="{{ root_path }}/highlights" class="highlights-link">
+                    ✨ Highlights
+                </a>
+                <button class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="themeIcon">
+                        <!-- Moon icon (default for light mode) -->
+                        <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
 
         <div class="upload-card">
             <div class="upload-header">
@@ -101,19 +141,46 @@
             </div>
         </div>
 
+        <!-- Tag Filter Bar -->
+        {% if all_tags %}
+        <div class="tag-filter-section" style="margin: 30px 0 20px 0;">
+            <div style="font-family: -apple-system, sans-serif; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; font-size: 1.05em;">Filter by Tags</div>
+            <div class="tag-filter-bar">
+                <button class="tag-filter-btn active" data-tag="all" onclick="filterByTags('all')">
+                    All Books
+                </button>
+                {% for tag in all_tags %}
+                <button class="tag-filter-btn" data-tag="{{ tag }}" onclick="toggleTagFilter('{{ tag }}')">
+                    {{ tag }}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         {% if not books %}
             <p>No processed books found. Upload an EPUB/PDF above or run <code>reader3.py</code> on a book first.</p>
         {% endif %}
 
         <div class="book-grid">
             {% for book in books %}
-            <div class="book-card">
+            <div class="book-card" data-tags="{{ ','.join(book.tags) }}">
                 <div class="book-title">{{ book.title }}</div>
+                <div class="book-tags">
+                    {% if book.tags %}
+                        {% for tag in book.tags %}
+                        <span class="tag-badge">{{ tag }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="tag-badge empty-placeholder">no tags</span>
+                    {% endif %}
+                </div>
                 <div class="book-meta">
                     {{ book.author }}<br>
                     {{ book.chapters }} sections
                 </div>
                 <a href="{{ root_path }}/read/{{ book.id }}/0" class="btn">Read Book</a>
+                <button class="edit-tags-btn" onclick="openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title }}')">Edit Tags</button>
             </div>
             {% endfor %}
         </div>
@@ -217,6 +284,135 @@
 
         // Initialize theme on page load
         initTheme();
+
+        // ===== Tag Management =====
+
+        let currentBookId = null;
+        const selectedTags = new Set();
+
+        function openTagEditor(bookId, currentTags, bookTitle) {
+            currentBookId = bookId;
+            document.getElementById('modalBookTitle').textContent = bookTitle;
+            document.getElementById('tagInput').value = currentTags;
+            document.getElementById('tagModal').classList.add('show');
+            document.getElementById('tagInput').focus();
+        }
+
+        function closeTagEditor() {
+            document.getElementById('tagModal').classList.remove('show');
+            currentBookId = null;
+        }
+
+        async function saveTags() {
+            if (!currentBookId) return;
+
+            const input = document.getElementById('tagInput').value;
+            const tags = input.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
+            try {
+                const res = await fetch(`{{ root_path }}/api/books/${currentBookId}/tags`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tags })
+                });
+
+                if (!res.ok) {
+                    const error = await res.json();
+                    alert(`Failed to save tags: ${error.detail || 'Unknown error'}`);
+                    return;
+                }
+
+                // Reload page to show updated tags
+                window.location.reload();
+            } catch (err) {
+                alert(`Failed to save tags: ${err.message}`);
+            }
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.getElementById('tagModal').classList.contains('show')) {
+                closeTagEditor();
+            }
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('tagModal').addEventListener('click', (e) => {
+            if (e.target.id === 'tagModal') {
+                closeTagEditor();
+            }
+        });
+
+        // ===== Tag Filtering =====
+
+        function filterByTags(tag) {
+            // Clear all selections
+            selectedTags.clear();
+            document.querySelectorAll('.tag-filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            if (tag === 'all') {
+                // Show all books
+                document.querySelectorAll('.book-card').forEach(card => {
+                    card.style.display = 'block';
+                });
+                document.querySelector('[data-tag="all"]').classList.add('active');
+            } else {
+                // Single tag filter (shouldn't normally be called, but keep for safety)
+                selectedTags.add(tag);
+                applyFilters();
+            }
+        }
+
+        function toggleTagFilter(tag) {
+            const btn = document.querySelector(`[data-tag="${tag}"]`);
+
+            // Toggle tag selection
+            if (selectedTags.has(tag)) {
+                selectedTags.delete(tag);
+                btn.classList.remove('active');
+            } else {
+                selectedTags.add(tag);
+                btn.classList.add('active');
+            }
+
+            // Deactivate "All" button
+            document.querySelector('[data-tag="all"]').classList.remove('active');
+
+            // If no tags selected, show all
+            if (selectedTags.size === 0) {
+                filterByTags('all');
+                return;
+            }
+
+            applyFilters();
+        }
+
+        function applyFilters() {
+            // OR logic: Show books that have ANY of the selected tags
+            document.querySelectorAll('.book-card').forEach(card => {
+                const bookTags = card.dataset.tags.split(',').filter(t => t);
+
+                // Check if book has any of the selected tags
+                const hasMatch = bookTags.some(bookTag => selectedTags.has(bookTag));
+
+                card.style.display = hasMatch ? 'block' : 'none';
+            });
+        }
     </script>
+
+    <!-- Tag Editor Modal -->
+    <div id="tagModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Edit Tags</div>
+            <div class="modal-subtext" id="modalBookTitle"></div>
+            <input type="text" id="tagInput" class="modal-input" placeholder="Enter tags separated by commas (e.g., trading, finance, options)">
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-secondary" onclick="closeTagEditor()">Cancel</button>
+                <button class="modal-btn modal-btn-primary" onclick="saveTags()">Save Tags</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Highlights</title>
+    <style>
+        /* Theme Variables */
+        :root {
+            --bg-main: #ffffff;
+            --bg-card: #f8f9fa;
+            --text-primary: #212529;
+            --text-secondary: #495057;
+            --text-muted: #6c757d;
+            --border-light: #e9ecef;
+            --border-medium: #dee2e6;
+            --accent-primary: #3498db;
+            --accent-success: #28a745;
+            --accent-warning: #ffc107;
+        }
+
+        body.dark-mode {
+            --bg-main: #1a1a1a;
+            --bg-card: #2d2d2d;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --text-muted: #888888;
+            --border-light: #3d3d3d;
+            --border-medium: #4a4a4a;
+            --accent-primary: #7db8f5;
+            --accent-success: #98c379;
+            --accent-warning: #e5c07b;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2em;
+            color: var(--text-primary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: var(--accent-success);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-medium);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-light);
+        }
+
+        .theme-toggle {
+            background: transparent;
+            border: 1px solid var(--border-medium);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: all 0.3s;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state p {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+
+        .book-section {
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-light);
+            transition: all 0.3s;
+        }
+
+        .book-section:hover {
+            border-color: var(--border-medium);
+        }
+
+        .book-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+
+        .book-info h2 {
+            margin: 0 0 5px 0;
+            font-size: 1.5em;
+            color: var(--text-primary);
+        }
+
+        .book-meta {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        .highlight-count {
+            background: var(--accent-warning);
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .chapter-section {
+            margin-bottom: 25px;
+        }
+
+        .chapter-title {
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            font-size: 1.1em;
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: 8px;
+        }
+
+        .highlight-item {
+            background: var(--bg-main);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid #ffeb3b;
+            transition: all 0.3s;
+        }
+
+        body.dark-mode .highlight-item {
+            border-left-color: #b8860b;
+        }
+
+        .highlight-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .highlight-text {
+            font-size: 1.05em;
+            line-height: 1.6;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+
+        .highlight-note {
+            background: rgba(52, 152, 219, 0.1);
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            color: var(--text-secondary);
+            font-size: 0.95em;
+        }
+
+        .highlight-note strong {
+            color: var(--accent-primary);
+        }
+
+        .highlight-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85em;
+            color: var(--text-muted);
+            margin-top: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .view-link {
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .view-link:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 15px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .book-header {
+                flex-direction: column;
+            }
+
+            .highlight-count {
+                align-self: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 All Highlights</h1>
+            <div class="header-actions">
+                <a href="{{ root_path }}/" class="btn btn-secondary">← Library</a>
+                <a href="{{ root_path }}/api/highlights/export/markdown" class="btn" download>
+                    📥 Export Markdown
+                </a>
+                <button class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                    <span id="themeIcon">🌙</span>
+                </button>
+            </div>
+        </div>
+
+        {% if books|length == 0 %}
+        <div class="empty-state">
+            <p>✨ No highlights yet</p>
+            <p style="font-size: 0.9em;">Start reading and highlight important passages!</p>
+            <a href="{{ root_path }}/" class="btn">Go to Library</a>
+        </div>
+        {% else %}
+            {% for book in books %}
+            <div class="book-section">
+                <div class="book-header">
+                    <div class="book-info">
+                        <h2>{{ book.title }}</h2>
+                        <div class="book-meta">
+                            by {{ book.author }}
+                        </div>
+                    </div>
+                    <div class="highlight-count">
+                        {{ book.total_highlights }} highlight{{ 's' if book.total_highlights != 1 else '' }}
+                    </div>
+                </div>
+
+                {% for chapter in book.chapters %}
+                <div class="chapter-section">
+                    <div class="chapter-title">
+                        {{ chapter.title }}
+                    </div>
+
+                    {% for highlight in chapter.highlights %}
+                    <div class="highlight-item">
+                        <div class="highlight-text">
+                            "{{ highlight.text }}"
+                        </div>
+
+                        {% if highlight.note %}
+                        <div class="highlight-note">
+                            <strong>Note:</strong> {{ highlight.note }}
+                        </div>
+                        {% endif %}
+
+                        <div class="highlight-meta">
+                            <span>
+                                🕒 {{ highlight.timestamp[:10] if highlight.timestamp else 'Unknown date' }}
+                            </span>
+                            <a href="{{ root_path }}/read/{{ book.book_id }}/{{ chapter.index }}" class="view-link">
+                                View in book →
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <script>
+        // Dark mode toggle
+        function updateThemeIcon(isDark) {
+            const icon = document.getElementById('themeIcon');
+            icon.textContent = isDark ? '☀️' : '🌙';
+        }
+
+        function toggleDarkMode() {
+            const body = document.body;
+            const isDark = body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcon(isDark);
+        }
+
+        function initTheme() {
+            let theme = localStorage.getItem('theme');
+            if (!theme) {
+                theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+
+            if (theme === 'dark') {
+                document.body.classList.add('dark-mode');
+                updateThemeIcon(true);
+            }
+        }
+
+        // Initialize theme
+        initTheme();
+    </script>
+</body>
+</html>
