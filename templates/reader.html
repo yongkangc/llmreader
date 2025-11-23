@@ -5,45 +5,106 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ book.metadata.title }}</title>
     <style>
+        /* Theme Variables */
+        :root {
+            --bg-main: #ffffff;
+            --bg-sidebar: #f8f9fa;
+            --bg-button: #f8f9fa;
+            --bg-button-hover: #e9ecef;
+            --text-primary: #212529;
+            --text-secondary: #495057;
+            --text-muted: #6c757d;
+            --border-light: #e9ecef;
+            --border-medium: #dee2e6;
+            --border-dark: #adb5bd;
+            --accent-primary: #3498db;
+            --accent-success: #28a745;
+            --accent-active: #d63384;
+            --heading-color: #333333;
+        }
+
+        body.dark-mode {
+            --bg-main: #1a1a1a;
+            --bg-sidebar: #2d2d2d;
+            --bg-button: #3d3d3d;
+            --bg-button-hover: #4a4a4a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --text-muted: #888888;
+            --border-light: #3d3d3d;
+            --border-medium: #4a4a4a;
+            --border-dark: #5a5a5a;
+            --accent-primary: #7db8f5;
+            --accent-success: #98c379;
+            --accent-active: #e06c75;
+            --heading-color: #d4d4d4;
+        }
+
         /* Layout */
-        body { margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; font-family: "Georgia", serif; background: #fff; }
+        body { margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; font-family: "Georgia", serif; background: var(--bg-main); transition: background-color 0.3s, color 0.3s; }
 
         /* Sidebar */
-        #sidebar { width: 300px; background: #f8f9fa; border-right: 1px solid #e9ecef; overflow-y: auto; padding: 20px; flex-shrink: 0; }
-        .nav-header { font-family: -apple-system, sans-serif; font-weight: bold; color: #495057; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #dee2e6; }
-        .nav-home { display: block; margin-bottom: 20px; color: #3498db; text-decoration: none; font-family: -apple-system, sans-serif; font-size: 0.9em; }
+        #sidebar { width: 300px; background: var(--bg-sidebar); border-right: 1px solid var(--border-light); overflow-y: auto; padding: 20px; flex-shrink: 0; transition: transform 0.3s ease, background-color 0.3s, border-color 0.3s; position: relative; z-index: 10; }
+
+        /* Sidebar Collapsed State */
+        body.sidebar-collapsed #sidebar { transform: translateX(-100%); }
+        body.sidebar-collapsed #main { margin-left: 0; }
+        .nav-header { font-family: -apple-system, sans-serif; font-weight: bold; color: var(--text-secondary); margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--border-medium); transition: color 0.3s, border-color 0.3s; }
+        .nav-home { display: block; margin-bottom: 20px; color: var(--accent-primary); text-decoration: none; font-family: -apple-system, sans-serif; font-size: 0.9em; transition: color 0.3s; }
 
         /* TOC Tree */
         ul.toc-list { list-style: none; padding-left: 0; margin: 0; }
         ul.toc-list ul { padding-left: 20px; } /* Indent children */
         li.toc-item { margin-bottom: 8px; }
-        a.toc-link { text-decoration: none; color: #495057; font-size: 0.95em; display: block; padding: 4px 0; line-height: 1.4; }
-        a.toc-link:hover { color: #000; text-decoration: underline; }
-        a.toc-link.active { color: #d63384; font-weight: bold; }
+        a.toc-link { text-decoration: none; color: var(--text-secondary); font-size: 0.95em; display: block; padding: 4px 0; line-height: 1.4; transition: color 0.3s; }
+        a.toc-link:hover { color: var(--text-primary); text-decoration: underline; }
+        a.toc-link.active { color: var(--accent-active); font-weight: bold; }
 
         /* Main Content */
-        #main { flex-grow: 1; overflow-y: auto; position: relative; scroll-behavior: smooth; }
-        .content-container { max-width: 700px; margin: 0 auto; padding: 60px 40px; line-height: 1.8; font-size: 1.15em; color: #212529; position: relative; }
+        #main { flex-grow: 1; overflow-y: auto; position: relative; scroll-behavior: smooth; background: var(--bg-main); transition: background-color 0.3s; }
+        .content-container { max-width: 700px; margin: 0 auto; padding: 60px 40px; line-height: 1.8; font-size: 1.15em; color: var(--text-primary); position: relative; transition: color 0.3s; }
 
         /* Content Styling (Basic normalization for the book HTML) */
         .book-content img { max-width: 100%; height: auto; display: block; margin: 20px auto; }
-        .book-content h1, .book-content h2, .book-content h3 { font-family: -apple-system, sans-serif; margin-top: 1.5em; color: #333; }
-        .book-content p { margin-bottom: 1.5em; text-align: justify; }
+        .book-content h1, .book-content h2, .book-content h3 { font-family: -apple-system, sans-serif; margin-top: 1.5em; color: var(--heading-color); transition: color 0.3s; }
+        .book-content p { margin-bottom: 1.5em; text-align: justify; color: var(--text-primary); transition: color 0.3s; }
 
         /* Copy Button */
-        .copy-btn { position: absolute; top: 20px; right: 40px; background: #f8f9fa; color: #495057; border: 1px solid #dee2e6; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.2s; }
-        .copy-btn:hover { background: #e9ecef; border-color: #adb5bd; }
-        .copy-btn.copied { background: #28a745; color: white; border-color: #28a745; }
+        .copy-btn { position: absolute; top: 20px; right: 100px; background: var(--bg-button); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.3s; }
+        .copy-btn:hover { background: var(--bg-button-hover); border-color: var(--border-dark); }
+        .copy-btn.copied { background: var(--accent-success); color: white; border-color: var(--accent-success); }
+
+        /* Sidebar Toggle */
+        .sidebar-toggle { position: fixed; top: 20px; left: 20px; background: var(--bg-button); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.3s; z-index: 20; }
+        .sidebar-toggle:hover { background: var(--bg-button-hover); border-color: var(--border-dark); }
+        body.sidebar-collapsed .sidebar-toggle { left: 20px; }
+
+        /* Dark Mode Toggle */
+        .theme-toggle { position: absolute; top: 20px; right: 40px; background: var(--bg-button); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.3s; }
+        .theme-toggle:hover { background: var(--bg-button-hover); border-color: var(--border-dark); }
+
+        /* Responsive: Auto-collapse sidebar on mobile */
+        @media (max-width: 768px) {
+            body:not(.sidebar-open) #sidebar { transform: translateX(-100%); }
+            .sidebar-toggle { left: 20px; }
+        }
 
         /* Navigation Footer */
-        .chapter-nav { display: flex; justify-content: space-between; margin-top: 60px; padding-top: 20px; border-top: 1px solid #eee; font-family: -apple-system, sans-serif; }
-        .nav-btn { text-decoration: none; color: #3498db; font-weight: bold; padding: 10px 20px; border: 1px solid #3498db; border-radius: 4px; transition: all 0.2s; }
-        .nav-btn:hover { background: #3498db; color: white; }
-        .nav-btn.disabled { opacity: 0.5; pointer-events: none; border-color: #ccc; color: #ccc; }
+        .chapter-nav { display: flex; justify-content: space-between; margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border-light); font-family: -apple-system, sans-serif; transition: border-color 0.3s; }
+        .nav-btn { text-decoration: none; color: var(--accent-primary); font-weight: bold; padding: 10px 20px; border: 1px solid var(--accent-primary); border-radius: 4px; transition: all 0.3s; }
+        .nav-btn:hover { background: var(--accent-primary); color: white; }
+        .nav-btn.disabled { opacity: 0.5; pointer-events: none; border-color: var(--border-dark); color: var(--text-muted); }
 
     </style>
 </head>
 <body>
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Toggle sidebar">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="sidebarIcon">
+            <!-- Hamburger icon (default - sidebar open) -->
+            <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"></path>
+        </svg>
+    </button>
 
     <!-- SIDEBAR -->
     <div id="sidebar">
@@ -106,6 +167,12 @@
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                     <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z"></path>
                     <path d="M2 6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h-1v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1V6H2Z"></path>
+                </svg>
+            </button>
+            <button class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="themeIcon">
+                    <!-- Moon icon (default for light mode) -->
+                    <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"></path>
                 </svg>
             </button>
             <div class="book-content" id="chapterContent">
@@ -180,6 +247,82 @@
                 alert('Failed to copy to clipboard');
             });
         }
+
+        // Dark Mode Functions
+        function updateThemeIcon(isDark) {
+            const icon = document.getElementById('themeIcon');
+            if (isDark) {
+                // Sun icon for dark mode (click to go light)
+                icon.innerHTML = '<path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z"></path>';
+            } else {
+                // Moon icon for light mode (click to go dark)
+                icon.innerHTML = '<path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"></path>';
+            }
+        }
+
+        function toggleDarkMode() {
+            const body = document.body;
+            const isDark = body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcon(isDark);
+        }
+
+        function initTheme() {
+            // Check localStorage first, then system preference
+            let theme = localStorage.getItem('theme');
+            if (!theme) {
+                // Check system preference
+                theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+
+            if (theme === 'dark') {
+                document.body.classList.add('dark-mode');
+                updateThemeIcon(true);
+            }
+        }
+
+        // Initialize theme on page load (before body renders to avoid flash)
+        initTheme();
+
+        // Sidebar Toggle Functions
+        function updateSidebarIcon(isCollapsed) {
+            const icon = document.getElementById('sidebarIcon');
+            if (isCollapsed) {
+                // Hamburger icon (sidebar closed - click to open)
+                icon.innerHTML = '<path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"></path>';
+            } else {
+                // Left arrow/chevron icon (sidebar open - click to close)
+                icon.innerHTML = '<path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"></path>';
+            }
+        }
+
+        function toggleSidebar() {
+            const body = document.body;
+            const isCollapsed = body.classList.toggle('sidebar-collapsed');
+            localStorage.setItem('sidebar', isCollapsed ? 'closed' : 'open');
+            updateSidebarIcon(isCollapsed);
+        }
+
+        function initSidebar() {
+            // Check localStorage and screen size
+            let sidebarState = localStorage.getItem('sidebar');
+            const isMobile = window.innerWidth <= 768;
+
+            // Auto-collapse on mobile if no saved preference
+            if (!sidebarState && isMobile) {
+                sidebarState = 'closed';
+            }
+
+            if (sidebarState === 'closed') {
+                document.body.classList.add('sidebar-collapsed');
+                updateSidebarIcon(true);
+            } else {
+                updateSidebarIcon(false);
+            }
+        }
+
+        // Initialize sidebar on page load
+        initSidebar();
     </script>
 </body>
 </html>
