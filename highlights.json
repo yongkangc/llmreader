@@ -22,6 +22,17 @@
         "timestamp": "2025-11-23T15:31:21.618802Z",
         "note": "",
         "color": "yellow"
+      },
+      {
+        "id": "3d22f91e-c3a1-4595-bde9-0723e073ba34",
+        "text": "The most common type of calendar spread consists of opposing positions in two options of the same type (either both calls or both puts",
+        "chapter_index": 16,
+        "chapter_href": "ch11.html",
+        "start_offset": 21909,
+        "end_offset": 22043,
+        "timestamp": "2025-11-23T16:06:26.118259Z",
+        "note": "",
+        "color": "yellow"
       }
     ]
   }
