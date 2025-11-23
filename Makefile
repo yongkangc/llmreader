@@ -6,7 +6,7 @@ start:
 		uv sync; \
 	fi
 	@echo "Starting server (uv run server.py) ..."
-	@uv run server.py > server.log 2>&1 & echo $$! > .server.pid
+	@UV_CACHE_DIR=.uvcache uv run server.py > server.log 2>&1 & echo $$! > .server.pid
 	@echo "Server started with PID $$(cat .server.pid). Logs: server.log"
 
 stop:
