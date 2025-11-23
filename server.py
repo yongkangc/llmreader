@@ -19,8 +19,11 @@ from reader3 import (
     save_to_pickle,
 )
 
-app = FastAPI()
+app = FastAPI(root_path="/reader")
 templates = Jinja2Templates(directory="templates")
+
+# Add root_path to all templates
+templates.env.globals['root_path'] = "/reader"
 
 # Where are the book folders located?
 BOOKS_DIR = "."

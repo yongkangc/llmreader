@@ -13,7 +13,7 @@ from urllib.parse import unquote
 
 import ebooklib
 from ebooklib import epub
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 from bs4 import BeautifulSoup, Comment
 
 # --- Data structures ---

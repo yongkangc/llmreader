@@ -42,7 +42,7 @@
 
     <!-- SIDEBAR -->
     <div id="sidebar">
-        <a href="/" class="nav-home">← Back to Library</a>
+        <a href="{{ root_path }}/" class="nav-home">← Back to Library</a>
         <div class="nav-header">{{ book.metadata.title }}</div>
 
         <!-- Recursive Macro for TOC -->
@@ -103,7 +103,7 @@
 
             <div class="chapter-nav">
                 {% if prev_idx is not none %}
-                    <a href="/read/{{ book_id }}/{{ prev_idx }}" class="nav-btn">← Previous</a>
+                    <a href="{{ root_path }}/read/{{ book_id }}/{{ prev_idx }}" class="nav-btn">← Previous</a>
                 {% else %}
                     <span class="nav-btn disabled">← Previous</span>
                 {% endif %}
@@ -113,7 +113,7 @@
                 </span>
 
                 {% if next_idx is not none %}
-                    <a href="/read/{{ book_id }}/{{ next_idx }}" class="nav-btn">Next →</a>
+                    <a href="{{ root_path }}/read/{{ book_id }}/{{ next_idx }}" class="nav-btn">Next →</a>
                 {% else %}
                     <span class="nav-btn disabled">Next →</span>
                 {% endif %}
@@ -140,7 +140,7 @@
             const idx = spineMap[cleanFile];
 
             if (idx !== undefined) {
-                let url = "/read/{{ book_id }}/" + idx;
+                let url = "{{ root_path }}/read/{{ book_id }}/" + idx;
                 // If there was an anchor, we could try to scroll to it,
                 // but simple page loads often lose anchor position without extra JS.
                 // Let's just go to the page.
