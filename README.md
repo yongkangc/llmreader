@@ -15,17 +15,45 @@ Quick notes: EPUB and PDF are supported. You can upload through the UI or proces
 
 ## Features
 
+### Reading Experience
 - **Copy to Clipboard**: Click the copy button (top-right) to copy chapter text for pasting into your LLM
-- **Highlights**: Select text to highlight important passages, add notes, and manage all highlights across books
-  - Light yellow highlighting with persistent storage
-  - Click highlights to copy text, add/edit notes, or remove
+- **Dark Mode**: Toggle between light and dark themes (moon/sun icon, top-right) - preference saves automatically
+- **Responsive Design**: Fully optimized for mobile and desktop reading
+
+### Navigation
+- **Interactive Table of Contents**:
+  - Navigate to any chapter or subsection with anchor link support
+  - Active section automatically highlighted in sidebar
+  - Sidebar auto-scrolls to show current section
+  - Smooth scrolling to subsections within chapters
+- **Collapsible Sidebar**: Hide/show the table of contents (hamburger icon, top-left or **Cmd/Ctrl+Shift+P**)
+- **Chapter Navigation**: Previous/Next buttons for linear reading flow
+
+### Highlights & Annotations
+- **Text Highlighting**: Select any text to highlight important passages
+  - Works on both desktop (mouse) and mobile (touch)
+  - Light yellow highlighting in light mode, gold in dark mode
+  - Persistent storage across sessions
+- **Highlight Management**:
+  - Click any highlight to view options
+  - Copy highlighted text to clipboard
+  - Add or edit notes for each highlight
+  - Remove highlights individually
   - Dedicated highlights page showing all highlights grouped by book and chapter
   - Export to Obsidian/Roam-compatible markdown with wiki links and block references
+
+### Library Management
 - **Tags**: Organize your library by adding tags to books and filtering by them
-- **Dark Mode**: Toggle between light and dark themes (moon/sun icon, top-right) - preference saves automatically
-- **Collapsible Sidebar**: Hide/show the table of contents (hamburger icon, top-left or **Cmd/Ctrl+Shift+P**)
-- **Keyboard Shortcuts**:
-  - `Cmd+Shift+P` (Mac) / `Ctrl+Shift+P` (Windows/Linux) - Toggle sidebar
+- **Upload Interface**: Drag and drop EPUB or PDF files directly in the browser
+
+### Mobile Features
+- **Touch-Optimized**: Full support for text selection and highlighting on mobile
+- **Overlay Sidebar**: Sidebar slides over content on mobile with backdrop
+- **Auto-Hide Controls**: Toggle button automatically hides after 1 second of inactivity on mobile
+- **Responsive Layout**: Content adapts to screen size for optimal reading
+
+### Keyboard Shortcuts
+- `Cmd+Shift+P` (Mac) / `Ctrl+Shift+P` (Windows/Linux) - Toggle sidebar
 
 ## Usage
 

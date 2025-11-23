@@ -119,6 +119,14 @@
             .sidebar-toggle {
                 left: 10px;
                 top: 10px;
+                opacity: 1;
+                transition: opacity 0.3s ease;
+            }
+
+            /* Auto-hide sidebar toggle on mobile */
+            .sidebar-toggle.hidden {
+                opacity: 0;
+                pointer-events: none;
             }
 
             body.sidebar-collapsed .sidebar-toggle {
@@ -688,6 +696,29 @@
 
         // Initialize sidebar on page load
         initSidebar();
+
+        // Auto-hide sidebar toggle button on mobile after inactivity
+        if (window.innerWidth <= 768) {
+            let hideTimeout;
+            const sidebarToggle = document.getElementById('sidebarToggle');
+
+            function resetHideTimer() {
+                sidebarToggle.classList.remove('hidden');
+                clearTimeout(hideTimeout);
+                hideTimeout = setTimeout(() => {
+                    if (!document.body.classList.contains('sidebar-open')) {
+                        sidebarToggle.classList.add('hidden');
+                    }
+                }, 1000);
+            }
+
+            document.addEventListener('touchstart', resetHideTimer);
+            document.addEventListener('touchmove', resetHideTimer);
+            document.addEventListener('scroll', resetHideTimer, true);
+
+            // Initial timer
+            resetHideTimer();
+        }
 
         // Keyboard shortcut: Cmd/Ctrl + Shift + P to toggle sidebar
         document.addEventListener('keydown', function(e) {
