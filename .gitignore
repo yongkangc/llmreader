@@ -12,3 +12,5 @@ wheels/
 # Custom
 *_data/
 *.epub
+server.log
+.server.pid
