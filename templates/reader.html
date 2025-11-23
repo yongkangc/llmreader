@@ -87,8 +87,56 @@
 
         /* Responsive: Auto-collapse sidebar on mobile */
         @media (max-width: 768px) {
-            body:not(.sidebar-open) #sidebar { transform: translateX(-100%); }
-            body.sidebar-collapsed .sidebar-toggle { left: auto; right: 160px; }
+            /* On mobile, sidebar becomes an overlay */
+            #sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 300px;
+                z-index: 30;
+                transform: translateX(-100%);
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            }
+
+            /* Show sidebar when open */
+            body.sidebar-open #sidebar {
+                transform: translateX(0);
+            }
+
+            /* Main content takes full width on mobile */
+            #main {
+                width: 100%;
+            }
+
+            /* Adjust content padding on mobile */
+            .content-container {
+                max-width: 100%;
+                padding: 60px 20px;
+            }
+
+            /* Sidebar toggle button position on mobile */
+            .sidebar-toggle {
+                left: 10px;
+                top: 10px;
+            }
+
+            body.sidebar-collapsed .sidebar-toggle {
+                left: 10px;
+                right: auto;
+            }
+
+            /* Backdrop when sidebar is open on mobile */
+            body.sidebar-open::before {
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 25;
+            }
         }
 
         /* Navigation Footer */
@@ -418,11 +466,110 @@
             }
         }
 
+        function scrollSidebarToActive() {
+            // Find the currently active TOC link
+            const activeLink = document.querySelector('.toc-link.active');
+            if (!activeLink) {
+                console.log('scrollSidebarToActive: No active link found');
+                return;
+            }
+
+            const sidebar = document.querySelector('#sidebar');
+            if (!sidebar) {
+                console.log('scrollSidebarToActive: No sidebar found');
+                return;
+            }
+
+            console.log('scrollSidebarToActive: Scrolling to active item:', activeLink.textContent.trim().substring(0, 50));
+
+            // Get positions
+            const sidebarRect = sidebar.getBoundingClientRect();
+            const linkRect = activeLink.getBoundingClientRect();
+
+            // Calculate scroll position: current scroll + link position relative to sidebar - offset to center
+            const scrollTo = sidebar.scrollTop + (linkRect.top - sidebarRect.top) - (sidebarRect.height / 3);
+
+            console.log('scrollSidebarToActive: Current scroll:', sidebar.scrollTop, 'Target scroll:', Math.max(0, scrollTo));
+
+            // Smooth scroll the sidebar
+            sidebar.scrollTo({
+                top: Math.max(0, scrollTo),
+                behavior: 'smooth'
+            });
+        }
+
+        function updateActiveTOCItem() {
+            console.log('=== updateActiveTOCItem called ===');
+
+            // Get current chapter index and hash from the URL
+            const pathParts = window.location.pathname.split('/');
+            const currentChapterIndex = parseInt(pathParts[pathParts.length - 1]);
+            const currentHash = window.location.hash.substring(1); // Remove the #
+
+            console.log('Current pathname:', window.location.pathname);
+            console.log('Chapter index:', currentChapterIndex);
+            console.log('Current hash:', currentHash);
+
+            // Find the current chapter's href from spine
+            const spineEntries = Object.entries(spineMap);
+            const currentChapterFile = spineEntries.find(([file, idx]) => idx === currentChapterIndex)?.[0];
+
+            console.log('Current chapter file:', currentChapterFile);
+
+            if (!currentChapterFile) {
+                console.log('ERROR: No chapter file found for index', currentChapterIndex);
+                return;
+            }
+
+            // Build the full href we're looking for
+            const targetHref = currentHash ? `${currentChapterFile}#${currentHash}` : currentChapterFile;
+            console.log('Target href to match:', targetHref);
+
+            // Remove active class from all TOC links
+            document.querySelectorAll('.toc-link').forEach(link => {
+                link.classList.remove('active');
+            });
+
+            // Find and activate the matching TOC link
+            let matchFound = false;
+            document.querySelectorAll('.toc-link').forEach(link => {
+                const onclick = link.getAttribute('onclick');
+                if (onclick) {
+                    // Extract the href from onclick="findAndGo('...')"
+                    const match = onclick.match(/findAndGo\('([^']+)'\)/);
+                    if (match) {
+                        const linkHref = match[1];
+                        if (linkHref === targetHref) {
+                            console.log('MATCH FOUND:', linkHref, link.textContent.trim().substring(0, 50));
+                            link.classList.add('active');
+                            matchFound = true;
+                        }
+                    }
+                }
+            });
+
+            if (!matchFound) {
+                console.log('WARNING: No matching TOC link found for', targetHref);
+            }
+
+            // Scroll sidebar to show the active item (with small delay to ensure DOM has updated)
+            setTimeout(() => {
+                scrollSidebarToActive();
+            }, 100);
+        }
+
         // Call scrollToAnchor when the page loads
-        window.addEventListener('load', scrollToAnchor);
+        window.addEventListener('load', () => {
+            scrollToAnchor();
+            updateActiveTOCItem();
+        });
 
         // Also call scrollToAnchor when navigating within the same page (hash changes)
-        window.addEventListener('hashchange', scrollToAnchor);
+        window.addEventListener('hashchange', () => {
+            console.log('🔄 hashchange event fired! New hash:', window.location.hash);
+            scrollToAnchor();
+            updateActiveTOCItem();
+        });
 
         function copyChapter() {
             const content = document.getElementById('chapterContent');
@@ -494,9 +641,19 @@
 
         function toggleSidebar() {
             const body = document.body;
-            const isCollapsed = body.classList.toggle('sidebar-collapsed');
-            localStorage.setItem('sidebar', isCollapsed ? 'closed' : 'open');
-            updateSidebarIcon(isCollapsed);
+            const isMobile = window.innerWidth <= 768;
+
+            if (isMobile) {
+                // On mobile, toggle sidebar-open class
+                const isOpen = body.classList.toggle('sidebar-open');
+                localStorage.setItem('sidebar', isOpen ? 'open' : 'closed');
+                updateSidebarIcon(!isOpen); // Icon shows opposite state
+            } else {
+                // On desktop, toggle sidebar-collapsed class
+                const isCollapsed = body.classList.toggle('sidebar-collapsed');
+                localStorage.setItem('sidebar', isCollapsed ? 'closed' : 'open');
+                updateSidebarIcon(isCollapsed);
+            }
         }
 
         function initSidebar() {
@@ -509,11 +666,23 @@
                 sidebarState = 'closed';
             }
 
-            if (sidebarState === 'closed') {
-                document.body.classList.add('sidebar-collapsed');
-                updateSidebarIcon(true);
+            if (isMobile) {
+                // On mobile, use sidebar-open class
+                if (sidebarState === 'open') {
+                    document.body.classList.add('sidebar-open');
+                    updateSidebarIcon(false);
+                } else {
+                    // Default: sidebar hidden on mobile (no sidebar-open class)
+                    updateSidebarIcon(true);
+                }
             } else {
-                updateSidebarIcon(false);
+                // On desktop, use sidebar-collapsed class
+                if (sidebarState === 'closed') {
+                    document.body.classList.add('sidebar-collapsed');
+                    updateSidebarIcon(true);
+                } else {
+                    updateSidebarIcon(false);
+                }
             }
         }
 
@@ -639,7 +808,25 @@
         }
 
         // Text selection detection
-        document.getElementById('chapterContent').addEventListener('mouseup', handleTextSelection);
+        // Listen for both mouse and touch events for text selection
+        const chapterContent = document.getElementById('chapterContent');
+        chapterContent.addEventListener('mouseup', handleTextSelection);
+
+        // On mobile, use selectionchange with debouncing
+        let selectionTimeout;
+        document.addEventListener('selectionchange', () => {
+            clearTimeout(selectionTimeout);
+            selectionTimeout = setTimeout(() => {
+                const selection = window.getSelection();
+                if (selection.toString().trim().length > 0) {
+                    // Check if the selection is within our chapter content
+                    const range = selection.getRangeAt(0);
+                    if (chapterContent.contains(range.commonAncestorContainer)) {
+                        handleTextSelection();
+                    }
+                }
+            }, 300); // Wait 300ms after selection changes stop
+        });
 
         function handleTextSelection(e) {
             const selection = window.getSelection();
@@ -892,14 +1079,29 @@
         }
 
         // Click outside to hide popups
-        document.addEventListener('click', (e) => {
+        // Hide popups/toolbars when clicking/touching outside
+        function handleOutsideInteraction(e) {
             if (!e.target.closest('.highlight-popup') && !e.target.closest('.highlight')) {
                 hideHighlightPopup();
             }
             if (!e.target.closest('.highlight-toolbar') && !e.target.closest('#chapterContent')) {
                 hideHighlightToolbar();
             }
-        });
+
+            // Close sidebar on mobile when clicking backdrop
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile && document.body.classList.contains('sidebar-open')) {
+                // Check if click is outside sidebar
+                if (!e.target.closest('#sidebar') && !e.target.closest('.sidebar-toggle')) {
+                    document.body.classList.remove('sidebar-open');
+                    updateSidebarIcon(true);
+                    localStorage.setItem('sidebar', 'closed');
+                }
+            }
+        }
+
+        document.addEventListener('click', handleOutsideInteraction);
+        document.addEventListener('touchend', handleOutsideInteraction);
 
         // Load highlights when page is ready
         window.addEventListener('load', loadHighlights);
