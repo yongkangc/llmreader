@@ -23,12 +23,17 @@
 
         /* Main Content */
         #main { flex-grow: 1; overflow-y: auto; position: relative; scroll-behavior: smooth; }
-        .content-container { max-width: 700px; margin: 0 auto; padding: 60px 40px; line-height: 1.8; font-size: 1.15em; color: #212529; }
+        .content-container { max-width: 700px; margin: 0 auto; padding: 60px 40px; line-height: 1.8; font-size: 1.15em; color: #212529; position: relative; }
 
         /* Content Styling (Basic normalization for the book HTML) */
         .book-content img { max-width: 100%; height: auto; display: block; margin: 20px auto; }
         .book-content h1, .book-content h2, .book-content h3 { font-family: -apple-system, sans-serif; margin-top: 1.5em; color: #333; }
         .book-content p { margin-bottom: 1.5em; text-align: justify; }
+
+        /* Copy Button */
+        .copy-btn { position: absolute; top: 20px; right: 40px; background: #f8f9fa; color: #495057; border: 1px solid #dee2e6; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.2s; }
+        .copy-btn:hover { background: #e9ecef; border-color: #adb5bd; }
+        .copy-btn.copied { background: #28a745; color: white; border-color: #28a745; }
 
         /* Navigation Footer */
         .chapter-nav { display: flex; justify-content: space-between; margin-top: 60px; padding-top: 20px; border-top: 1px solid #eee; font-family: -apple-system, sans-serif; }
@@ -97,7 +102,13 @@
     <!-- MAIN CONTENT -->
     <div id="main">
         <div class="content-container">
-            <div class="book-content">
+            <button class="copy-btn" id="copyBtn" onclick="copyChapter()" title="Copy to clipboard for LLM">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z"></path>
+                    <path d="M2 6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h-1v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1V6H2Z"></path>
+                </svg>
+            </button>
+            <div class="book-content" id="chapterContent">
                 {{ current_chapter.content | safe }}
             </div>
 
@@ -148,6 +159,26 @@
             } else {
                 console.log("Could not find index for", filename);
             }
+        }
+
+        function copyChapter() {
+            const content = document.getElementById('chapterContent');
+            const text = content.innerText || content.textContent;
+
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('copyBtn');
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"></path></svg>';
+                btn.classList.add('copied');
+
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            });
         }
     </script>
 </body>
