@@ -53,6 +53,7 @@ class BookMetadata:
     date: Optional[str] = None
     identifiers: List[str] = field(default_factory=list)
     subjects: List[str] = field(default_factory=list)
+    tags: List[str] = field(default_factory=list)  # User-defined tags for organization
 
 
 @dataclass
@@ -66,7 +67,7 @@ class Book:
     # Meta info
     source_file: str
     processed_at: str
-    version: str = "3.0"
+    version: str = "3.1"
 
 
 # --- Utilities ---

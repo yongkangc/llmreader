@@ -271,7 +271,7 @@
 
                        BETTER FIX: Use JavaScript to match filenames.
                     -->
-                    <a href="#" onclick="findAndGo('{{ item.file_href }}')"
+                    <a href="#" onclick="findAndGo('{{ item.href }}')"
                        class="toc-link {% if is_active %}active{% endif %}">
                         {{ item.title }}
                     </a>
@@ -391,12 +391,21 @@
                 const targetElement = document.getElementById(elementId);
 
                 if (targetElement) {
-                    // Scroll to the element with smooth behavior
+                    // Scroll within the #main container, not the window
                     setTimeout(() => {
-                        targetElement.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
+                        const mainContainer = document.getElementById('main');
+                        const containerRect = mainContainer.getBoundingClientRect();
+                        const targetRect = targetElement.getBoundingClientRect();
+
+                        // Calculate the scroll position: current scroll + target position relative to container
+                        const scrollTo = mainContainer.scrollTop + (targetRect.top - containerRect.top) - 20; // 20px offset from top
+
+                        // Smooth scroll within the container
+                        mainContainer.scrollTo({
+                            top: scrollTo,
+                            behavior: 'smooth'
                         });
+
                         // Add a temporary highlight to show where we scrolled
                         targetElement.style.backgroundColor = 'rgba(52, 152, 219, 0.2)';
                         setTimeout(() => {
@@ -411,6 +420,9 @@
 
         // Call scrollToAnchor when the page loads
         window.addEventListener('load', scrollToAnchor);
+
+        // Also call scrollToAnchor when navigating within the same page (hash changes)
+        window.addEventListener('hashchange', scrollToAnchor);
 
         function copyChapter() {
             const content = document.getElementById('chapterContent');
