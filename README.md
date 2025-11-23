@@ -16,6 +16,12 @@ Quick notes: EPUB and PDF are supported. You can upload through the UI or proces
 ## Features
 
 - **Copy to Clipboard**: Click the copy button (top-right) to copy chapter text for pasting into your LLM
+- **Highlights**: Select text to highlight important passages, add notes, and manage all highlights across books
+  - Light yellow highlighting with persistent storage
+  - Click highlights to copy text, add/edit notes, or remove
+  - Dedicated highlights page showing all highlights grouped by book and chapter
+  - Export to Obsidian/Roam-compatible markdown with wiki links and block references
+- **Tags**: Organize your library by adding tags to books and filtering by them
 - **Dark Mode**: Toggle between light and dark themes (moon/sun icon, top-right) - preference saves automatically
 - **Collapsible Sidebar**: Hide/show the table of contents (hamburger icon, top-left or **Cmd/Ctrl+Shift+P**)
 - **Keyboard Shortcuts**:
