@@ -16,7 +16,8 @@ Quick notes: EPUB and PDF are supported. You can upload through the UI or proces
 ## Features
 
 ### Reading Experience
-- **Copy to Clipboard**: Click the copy button (top-right) to copy chapter text for pasting into your LLM
+- **LLM-Optimized Reading**: Read books one chapter at a time with easy copy-paste workflow for your favorite LLM - perfect for reading along with AI for explanations, summaries, and Q&A
+- **Copy to Clipboard**: Click the copy button (top-right) to copy entire chapter text instantly
 - **Dark Mode**: Toggle between light and dark themes (moon/sun icon, top-right) - preference saves automatically
 - **Responsive Design**: Fully optimized for mobile and desktop reading
 
