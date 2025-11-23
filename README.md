@@ -13,6 +13,14 @@ On the flip side, if you're a writer trying to explain/communicate something, we
 
 Quick notes: EPUB and PDF are supported. You can upload through the UI or process files locally. Duplicate uploads are blocked; delete the existing `_data` folder if you want to reimport.
 
+## Features
+
+- **Copy to Clipboard**: Click the copy button (top-right) to copy chapter text for pasting into your LLM
+- **Dark Mode**: Toggle between light and dark themes (moon/sun icon, top-right) - preference saves automatically
+- **Collapsible Sidebar**: Hide/show the table of contents (hamburger icon, top-left or **Cmd/Ctrl+Shift+P**)
+- **Keyboard Shortcuts**:
+  - `Cmd+Shift+P` (Mac) / `Ctrl+Shift+P` (Windows/Linux) - Toggle sidebar
+
 ## Usage
 
 The project uses [uv](https://docs.astral.sh/uv/). Example with Dracula:

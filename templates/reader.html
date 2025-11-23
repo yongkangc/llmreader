@@ -327,7 +327,7 @@
         // Keyboard shortcut: Cmd/Ctrl + Shift + P to toggle sidebar
         document.addEventListener('keydown', function(e) {
             // Check for Cmd+Shift+P (Mac) or Ctrl+Shift+P (Windows/Linux)
-            if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'P') {
+            if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'P' || e.key === 'p')) {
                 e.preventDefault();
                 toggleSidebar();
             }
