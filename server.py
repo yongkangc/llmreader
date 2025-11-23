@@ -15,6 +15,7 @@ from reader3 import (
     ChapterContent,
     TOCEntry,
     process_epub,
+    process_pdf,
     save_to_pickle,
 )
 
@@ -25,11 +26,15 @@ templates = Jinja2Templates(directory="templates")
 BOOKS_DIR = "."
 
 
-def _sanitize_filename(filename: str) -> str:
-    """Return a filesystem-safe filename."""
-    base = os.path.basename(filename)
+def _sanitize_filename(filename: str, fallback_ext: str) -> str:
+    """Return a filesystem-safe filename, ensuring an extension exists."""
+    base = os.path.basename(filename or "")
     safe = "".join([c for c in base if c.isalnum() or c in ("-", "_", ".")]).strip(".")
-    return safe or "upload.epub"
+    if not safe:
+        safe = f"upload{fallback_ext}"
+    if not os.path.splitext(safe)[1]:
+        safe = safe + fallback_ext
+    return safe
 
 @lru_cache(maxsize=10)
 def load_book_cached(folder_name: str) -> Optional[Book]:
@@ -123,12 +128,16 @@ async def serve_image(book_id: str, image_name: str):
 @app.post("/upload")
 async def upload_epub(file: UploadFile = File(...)):
     """
-    Accepts an EPUB upload, processes it into a *_data folder and returns basic info.
+    Accepts an EPUB or PDF upload, processes it into a *_data folder and returns basic info.
     """
-    if not file.filename or not file.filename.lower().endswith(".epub"):
-        raise HTTPException(status_code=400, detail="Only .epub files are supported")
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided")
 
-    safe_name = _sanitize_filename(file.filename)
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in {".epub", ".pdf"}:
+        raise HTTPException(status_code=400, detail="Only .epub or .pdf files are supported")
+
+    safe_name = _sanitize_filename(file.filename, fallback_ext=ext)
     base_name = os.path.splitext(safe_name)[0]
     out_dir = os.path.join(BOOKS_DIR, f"{base_name}_data")
 
@@ -145,7 +154,10 @@ async def upload_epub(file: UploadFile = File(...)):
                     break
                 buffer.write(chunk)
 
-        book_obj = process_epub(temp_path, out_dir)
+        if ext == ".pdf":
+            book_obj = process_pdf(temp_path, out_dir)
+        else:
+            book_obj = process_epub(temp_path, out_dir)
         save_to_pickle(book_obj, out_dir)
         # Clear cache so subsequent requests pick up the new book list immediately.
         load_book_cached.cache_clear()

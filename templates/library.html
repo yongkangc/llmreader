@@ -34,18 +34,18 @@
         <div class="upload-card">
             <div class="upload-header">
                 <div class="upload-title">Add a book</div>
-                <button class="upload-btn" id="chooseBtn" type="button">Choose EPUB</button>
+                <button class="upload-btn" id="chooseBtn" type="button">Choose EPUB/PDF</button>
             </div>
-            <div class="upload-desc">Drag & drop a .epub file or click to pick one. The book will be processed locally and added to your library.</div>
-            <div class="dropzone" id="dropzone">Drop .epub here</div>
+            <div class="upload-desc">Drag & drop a .epub or .pdf file or click to pick one. The book will be processed locally and added to your library.</div>
+            <div class="dropzone" id="dropzone">Drop .epub or .pdf here</div>
             <div class="upload-actions">
-                <input type="file" id="fileInput" accept=".epub" style="display:none">
+                <input type="file" id="fileInput" accept=".epub,.pdf" style="display:none">
                 <span class="upload-status" id="uploadStatus"></span>
             </div>
         </div>
 
         {% if not books %}
-            <p>No processed books found. Upload an EPUB above or run <code>reader3.py</code> on an epub first.</p>
+            <p>No processed books found. Upload an EPUB/PDF above or run <code>reader3.py</code> on a book first.</p>
         {% endif %}
 
         <div class="book-grid">
@@ -74,8 +74,9 @@
 
         async function uploadFile(file) {
             if (!file) return;
-            if (!file.name.toLowerCase().endsWith('.epub')) {
-                setStatus('Please select an .epub file', true);
+            const lower = file.name.toLowerCase();
+            if (!lower.endsWith('.epub') && !lower.endsWith('.pdf')) {
+                setStatus('Please select an .epub or .pdf file', true);
                 return;
             }
 

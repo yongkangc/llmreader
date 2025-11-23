@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from pathlib import Path
 import sys
+import textwrap
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -30,6 +31,50 @@ def make_test_epub(tmp_dir: Path) -> Path:
 
     out_path = tmp_dir / "sample.epub"
     epub.write_epub(out_path, book)
+    return out_path
+
+
+def make_test_pdf(tmp_dir: Path) -> Path:
+    """Create a tiny PDF with text content."""
+    pdf_bytes = textwrap.dedent(
+        r'''
+        %PDF-1.4
+        1 0 obj
+        << /Type /Catalog /Pages 2 0 R >>
+        endobj
+        2 0 obj
+        << /Type /Pages /Kids [3 0 R] /Count 1 >>
+        endobj
+        3 0 obj
+        << /Type /Page /Parent 2 0 R /MediaBox [0 0 300 144] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+        endobj
+        4 0 obj
+        << /Length 44 >>
+        stream
+        BT /F1 24 Tf 72 100 Td (Hello PDF) Tj ET
+        endstream
+        endobj
+        5 0 obj
+        << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+        endobj
+        xref
+        0 6
+        0000000000 65535 f 
+        0000000010 00000 n 
+        0000000060 00000 n 
+        0000000110 00000 n 
+        0000000233 00000 n 
+        0000000324 00000 n 
+        trailer
+        << /Root 1 0 R /Size 6 >>
+        startxref
+        373
+        %%EOF
+        '''
+    ).strip()
+
+    out_path = tmp_dir / "sample.pdf"
+    out_path.write_bytes(pdf_bytes.encode("utf-8"))
     return out_path
 
 
@@ -68,6 +113,25 @@ def test_upload_creates_book_and_lists(tmp_path):
         assert "Test Book" in page.text
 
 
+def test_upload_pdf_creates_book(tmp_path):
+    pdf_path = make_test_pdf(tmp_path)
+    with with_library(tmp_path) as client:
+        with open(pdf_path, "rb") as f:
+            resp = client.post(
+                "/upload",
+                files={"file": ("sample.pdf", f, "application/pdf")},
+            )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "book_id" in data
+
+        book_dir = tmp_path / data["book_id"]
+        assert (book_dir / "book.pkl").exists()
+
+        page = client.get("/")
+        assert "sample" in page.text or "Hello" in page.text
+
+
 def test_upload_rejects_non_epub(tmp_path):
     with with_library(tmp_path) as client:
         resp = client.post(
@@ -75,4 +139,4 @@ def test_upload_rejects_non_epub(tmp_path):
             files={"file": ("not_epub.txt", b"hello", "text/plain")},
         )
         assert resp.status_code == 400
-        assert "Only .epub files" in resp.json()["detail"]
+        assert "Only .epub or .pdf" in resp.json()["detail"]

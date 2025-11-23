@@ -6,12 +6,14 @@ import os
 import pickle
 import shutil
 from dataclasses import dataclass, field
+from html import escape
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 from urllib.parse import unquote
 
 import ebooklib
 from ebooklib import epub
+from PyPDF2 import PdfReader
 from bs4 import BeautifulSoup, Comment
 
 # --- Data structures ---
@@ -283,6 +285,76 @@ def process_epub(epub_path: str, output_dir: str) -> Book:
     return final_book
 
 
+def process_pdf(pdf_path: str, output_dir: str) -> Book:
+    """
+    Convert a PDF into a minimal Book representation for the reader.
+    Extracts text per page, builds simple HTML paragraphs, and reuses
+    the same Book structure used for EPUBs.
+    """
+    print(f"Loading {pdf_path}...")
+    reader = PdfReader(pdf_path)
+
+    # Extract text per page; some PDFs may yield empty strings.
+    page_texts = []
+    for page in reader.pages:
+        try:
+            content = page.extract_text() or ""
+        except Exception:
+            content = ""
+        cleaned = content.strip()
+        if cleaned:
+            page_texts.append(cleaned)
+
+    full_text = "\n\n".join(page_texts)
+
+    # Build simple paragraph-based HTML
+    paragraphs = []
+    for raw in full_text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        paragraphs.append(f"<p>{escape(line)}</p>")
+    html_content = "\n".join(paragraphs) if paragraphs else "<p>(No text extracted)</p>"
+
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
+    images_dir = os.path.join(output_dir, "images")
+    os.makedirs(images_dir, exist_ok=True)
+
+    metadata = BookMetadata(
+        title=(reader.metadata.title if reader.metadata else None) or os.path.splitext(os.path.basename(pdf_path))[0],
+        language="en",
+        authors=[reader.metadata.author] if reader.metadata and reader.metadata.author else [],
+        description=None,
+        publisher=None,
+        date=None,
+        identifiers=[],
+        subjects=[],
+    )
+
+    chapter = ChapterContent(
+        id="pdf_content",
+        href="document.html",
+        title=metadata.title,
+        content=html_content,
+        text=full_text,
+        order=0,
+    )
+
+    toc_entry = TOCEntry(title=metadata.title, href="document.html", file_href="document.html", anchor="")
+
+    final_book = Book(
+        metadata=metadata,
+        spine=[chapter],
+        toc=[toc_entry],
+        images={},
+        source_file=os.path.basename(pdf_path),
+        processed_at=datetime.now().isoformat(),
+    )
+
+    return final_book
+
+
 def save_to_pickle(book: Book, output_dir: str):
     p_path = os.path.join(output_dir, 'book.pkl')
     with open(p_path, 'wb') as f:
@@ -296,14 +368,20 @@ if __name__ == "__main__":
 
     import sys
     if len(sys.argv) < 2:
-        print("Usage: python reader3.py <file.epub>")
+        print("Usage: python reader3.py <file.epub|file.pdf>")
         sys.exit(1)
 
-    epub_file = sys.argv[1]
-    assert os.path.exists(epub_file), "File not found."
-    out_dir = os.path.splitext(epub_file)[0] + "_data"
+    input_file = sys.argv[1]
+    assert os.path.exists(input_file), "File not found."
+    out_dir = os.path.splitext(input_file)[0] + "_data"
 
-    book_obj = process_epub(epub_file, out_dir)
+    if input_file.lower().endswith(".pdf"):
+        book_obj = process_pdf(input_file, out_dir)
+    elif input_file.lower().endswith(".epub"):
+        book_obj = process_epub(input_file, out_dir)
+    else:
+        raise ValueError("Unsupported file type; only .epub or .pdf")
+
     save_to_pickle(book_obj, out_dir)
     print("\n--- Summary ---")
     print(f"Title: {book_obj.metadata.title}")

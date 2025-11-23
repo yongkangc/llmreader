@@ -24,7 +24,7 @@ stop:
 
 add_book:
 	@if [ -z "$(BOOK)" ]; then \
-		echo "Usage: make add_book BOOK=/path/to/book.epub"; \
+		echo "Usage: make add_book BOOK=/path/to/book.(epub|pdf)"; \
 		exit 1; \
 	fi
 	@echo "Processing $(BOOK) ..."
