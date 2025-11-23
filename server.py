@@ -1,20 +1,35 @@
 import os
 import pickle
+import shutil
 from functools import lru_cache
 from typing import Optional
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from reader3 import Book, BookMetadata, ChapterContent, TOCEntry
+from reader3 import (
+    Book,
+    BookMetadata,
+    ChapterContent,
+    TOCEntry,
+    process_epub,
+    save_to_pickle,
+)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
 # Where are the book folders located?
 BOOKS_DIR = "."
+
+
+def _sanitize_filename(filename: str) -> str:
+    """Return a filesystem-safe filename."""
+    base = os.path.basename(filename)
+    safe = "".join([c for c in base if c.isalnum() or c in ("-", "_", ".")]).strip(".")
+    return safe or "upload.epub"
 
 @lru_cache(maxsize=10)
 def load_book_cached(folder_name: str) -> Optional[Book]:
@@ -42,7 +57,8 @@ async def library_view(request: Request):
     # Scan directory for folders ending in '_data' that have a book.pkl
     if os.path.exists(BOOKS_DIR):
         for item in os.listdir(BOOKS_DIR):
-            if item.endswith("_data") and os.path.isdir(item):
+            item_path = os.path.join(BOOKS_DIR, item)
+            if item.endswith("_data") and os.path.isdir(item_path):
                 # Try to load it to get the title
                 book = load_book_cached(item)
                 if book:
@@ -53,7 +69,7 @@ async def library_view(request: Request):
                         "chapters": len(book.spine)
                     })
 
-    return templates.TemplateResponse("library.html", {"request": request, "books": books})
+    return templates.TemplateResponse(request, "library.html", {"books": books})
 
 @app.get("/read/{book_id}", response_class=HTMLResponse)
 async def redirect_to_first_chapter(book_id: str):
@@ -76,8 +92,7 @@ async def read_chapter(request: Request, book_id: str, chapter_index: int):
     prev_idx = chapter_index - 1 if chapter_index > 0 else None
     next_idx = chapter_index + 1 if chapter_index < len(book.spine) - 1 else None
 
-    return templates.TemplateResponse("reader.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "reader.html", {
         "book": book,
         "current_chapter": current_chapter,
         "chapter_index": chapter_index,
@@ -103,6 +118,51 @@ async def serve_image(book_id: str, image_name: str):
         raise HTTPException(status_code=404, detail="Image not found")
 
     return FileResponse(img_path)
+
+
+@app.post("/upload")
+async def upload_epub(file: UploadFile = File(...)):
+    """
+    Accepts an EPUB upload, processes it into a *_data folder and returns basic info.
+    """
+    if not file.filename or not file.filename.lower().endswith(".epub"):
+        raise HTTPException(status_code=400, detail="Only .epub files are supported")
+
+    safe_name = _sanitize_filename(file.filename)
+    base_name = os.path.splitext(safe_name)[0]
+    out_dir = os.path.join(BOOKS_DIR, f"{base_name}_data")
+
+    if os.path.exists(out_dir):
+        raise HTTPException(status_code=409, detail="Book already exists in library")
+
+    temp_path = os.path.join(BOOKS_DIR, safe_name)
+
+    try:
+        with open(temp_path, "wb") as buffer:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                buffer.write(chunk)
+
+        book_obj = process_epub(temp_path, out_dir)
+        save_to_pickle(book_obj, out_dir)
+        # Clear cache so subsequent requests pick up the new book list immediately.
+        load_book_cached.cache_clear()
+    except Exception as e:
+        # Best-effort cleanup
+        if os.path.exists(out_dir):
+            shutil.rmtree(out_dir, ignore_errors=True)
+        raise HTTPException(status_code=500, detail=f"Failed to process upload: {e}")
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+    return {
+        "book_id": os.path.basename(out_dir),
+        "title": book_obj.metadata.title,
+        "chapters": len(book_obj.spine),
+    }
 
 if __name__ == "__main__":
     import uvicorn

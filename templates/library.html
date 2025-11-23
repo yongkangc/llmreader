@@ -6,8 +6,19 @@
     <title>My Library</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f4f9; margin: 0; padding: 40px; }
-        .container { max-width: 800px; margin: 0 auto; }
+        .container { max-width: 900px; margin: 0 auto; }
         h1 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .upload-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 14px rgba(0,0,0,0.08); margin: 20px 0 30px; border: 1px solid #e8e8ef; }
+        .upload-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .upload-title { font-weight: 700; color: #2c3e50; font-size: 1.1em; }
+        .upload-desc { color: #6c757d; margin: 8px 0 16px; font-size: 0.95em; }
+        .dropzone { border: 2px dashed #b7c5d6; border-radius: 10px; padding: 24px; background: #f8fbff; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .dropzone:hover { border-color: #4a90e2; background: #f1f7ff; }
+        .dropzone.dragging { border-color: #2c7df0; background: #e8f1ff; box-shadow: 0 8px 20px rgba(76,131,255,0.18); }
+        .upload-actions { margin-top: 14px; display: flex; align-items: center; gap: 12px; }
+        .upload-btn { background: #3498db; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .upload-btn:hover { background: #2d89c8; }
+        .upload-status { color: #444; font-size: 0.95em; min-height: 20px; }
         .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 30px; }
         .book-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: transform 0.2s; }
         .book-title { font-size: 1.2em; font-weight: bold; color: #2c3e50; margin-bottom: 10px; }
@@ -20,8 +31,21 @@
     <div class="container">
         <h1>Library</h1>
 
+        <div class="upload-card">
+            <div class="upload-header">
+                <div class="upload-title">Add a book</div>
+                <button class="upload-btn" id="chooseBtn" type="button">Choose EPUB</button>
+            </div>
+            <div class="upload-desc">Drag & drop a .epub file or click to pick one. The book will be processed locally and added to your library.</div>
+            <div class="dropzone" id="dropzone">Drop .epub here</div>
+            <div class="upload-actions">
+                <input type="file" id="fileInput" accept=".epub" style="display:none">
+                <span class="upload-status" id="uploadStatus"></span>
+            </div>
+        </div>
+
         {% if not books %}
-            <p>No processed books found. Run <code>reader3.py</code> on an epub first.</p>
+            <p>No processed books found. Upload an EPUB above or run <code>reader3.py</code> on an epub first.</p>
         {% endif %}
 
         <div class="book-grid">
@@ -37,5 +61,68 @@
             {% endfor %}
         </div>
     </div>
+    <script>
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const chooseBtn = document.getElementById('chooseBtn');
+        const statusEl = document.getElementById('uploadStatus');
+
+        function setStatus(text, isError = false) {
+            statusEl.textContent = text;
+            statusEl.style.color = isError ? '#d6336c' : '#444';
+        }
+
+        async function uploadFile(file) {
+            if (!file) return;
+            if (!file.name.toLowerCase().endsWith('.epub')) {
+                setStatus('Please select an .epub file', true);
+                return;
+            }
+
+            setStatus('Uploading…');
+            const data = new FormData();
+            data.append('file', file, file.name);
+
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: data });
+                const body = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    setStatus(body.detail || 'Upload failed', true);
+                    return;
+                }
+                setStatus(`Added "${body.title}"`, false);
+                setTimeout(() => window.location.reload(), 400);
+            } catch (err) {
+                setStatus('Upload failed. Is the server running?', true);
+            }
+        }
+
+        dropzone.addEventListener('click', () => fileInput.click());
+        chooseBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => uploadFile(e.target.files[0]));
+
+        ['dragenter', 'dragover'].forEach(evt => dropzone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.add('dragging');
+        }));
+
+        ['dragleave', 'drop'].forEach(evt => dropzone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove('dragging');
+        }));
+
+        dropzone.addEventListener('drop', (e) => {
+            if (e.dataTransfer?.files?.length) {
+                uploadFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        // Prevent the browser from opening dropped files outside the dropzone.
+        ['dragover', 'drop'].forEach(evt => document.body.addEventListener(evt, (e) => {
+            e.preventDefault();
+        }));
+    </script>
 </body>
 </html>
