@@ -322,7 +322,7 @@
                             <span>
                                 🕒 {{ highlight.timestamp[:10] if highlight.timestamp else 'Unknown date' }}
                             </span>
-                            <a href="{{ root_path }}/read/{{ book.book_id }}/{{ chapter.index }}" class="view-link">
+                            <a href="{{ root_path }}/read/{{ book.book_id }}/{{ chapter.index }}#highlight-{{ highlight.id }}" class="view-link">
                                 View in book →
                             </a>
                         </div>

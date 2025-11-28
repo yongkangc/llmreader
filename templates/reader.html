@@ -4,6 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ book.metadata.title }}</title>
+
+    <!-- Reader Mode Detection Meta Tags -->
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="{{ book.metadata.title }}">
+    {% if book.metadata.creator %}
+    <meta name="author" content="{{ book.metadata.creator }}">
+    <meta property="article:author" content="{{ book.metadata.creator }}">
+    {% endif %}
+    <meta name="description" content="Reading {{ book.metadata.title }}">
+
+    <!-- Schema.org markup for Reader Mode -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "{{ book.metadata.title }}",
+      {% if book.metadata.creator %}"author": {
+        "@type": "Person",
+        "name": "{{ book.metadata.creator }}"
+      },{% endif %}
+      "inLanguage": "en"
+    }
+    </script>
     <style>
         /* Theme Variables */
         :root {
@@ -72,9 +95,13 @@
         .book-content p { margin-bottom: 1.5em; text-align: justify; color: var(--text-primary); transition: color 0.3s; }
 
         /* Copy Button */
-        .copy-btn { position: absolute; top: 20px; right: 100px; background: var(--bg-button); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.3s; }
+        .copy-btn { position: absolute; top: 20px; right: 160px; background: var(--bg-button); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.3s; }
         .copy-btn:hover { background: var(--bg-button-hover); border-color: var(--border-dark); }
         .copy-btn.copied { background: var(--accent-success); color: white; border-color: var(--accent-success); }
+
+        /* Highlights Button */
+        .highlights-btn { position: absolute; top: 20px; right: 100px; background: var(--bg-button); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.3s; text-decoration: none; display: inline-flex; align-items: center; }
+        .highlights-btn:hover { background: var(--bg-button-hover); border-color: var(--border-dark); }
 
         /* Sidebar Toggle */
         .sidebar-toggle { position: fixed; top: 20px; left: 20px; background: var(--bg-button); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.3s; z-index: 20; }
@@ -344,7 +371,7 @@
     </div>
 
     <!-- MAIN CONTENT -->
-    <div id="main">
+    <main id="main">
         <div class="content-container">
             <button class="copy-btn" id="copyBtn" onclick="copyChapter()" title="Copy to clipboard for LLM">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -352,15 +379,22 @@
                     <path d="M2 6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h-1v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1V6H2Z"></path>
                 </svg>
             </button>
+            <a href="{{ root_path }}/highlights" class="highlights-btn" title="View all highlights">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2Z"/>
+                    <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2z"/>
+                    <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1z"/>
+                </svg>
+            </a>
             <button class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()" title="Toggle dark mode">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="themeIcon">
                     <!-- Moon icon (default for light mode) -->
                     <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"></path>
                 </svg>
             </button>
-            <div class="book-content" id="chapterContent">
+            <article class="book-content" id="chapterContent">
                 {{ current_chapter.content | safe }}
-            </div>
+            </article>
 
             <div class="chapter-nav">
                 {% if prev_idx is not none %}
@@ -403,7 +437,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <script>
         // Highlight state
@@ -432,6 +466,21 @@
                 if (anchor) {
                     url += "#" + anchor;
                 }
+
+                // Auto-close sidebar after clicking TOC link
+                const isMobile = window.innerWidth <= 768;
+                if (isMobile) {
+                    // On mobile, close the sidebar
+                    document.body.classList.remove('sidebar-open');
+                    updateSidebarIcon(true);
+                    localStorage.setItem('sidebar', 'closed');
+                } else {
+                    // On desktop, collapse the sidebar
+                    document.body.classList.add('sidebar-collapsed');
+                    updateSidebarIcon(true);
+                    localStorage.setItem('sidebar', 'closed');
+                }
+
                 window.location.href = url;
             } else {
                 console.log("Could not find index for", filename);
@@ -746,8 +795,48 @@
                 loadedHighlights.forEach(highlight => {
                     applyHighlightToDOM(highlight);
                 });
+
+                // After highlights are applied, check if we need to scroll to a specific highlight
+                scrollToHighlightFromHash();
             } catch (error) {
                 console.error('Failed to load highlights:', error);
+            }
+        }
+
+        // Scroll to a highlight if the URL hash contains a highlight ID
+        function scrollToHighlightFromHash() {
+            const hash = window.location.hash;
+            if (!hash || !hash.startsWith('#highlight-')) return;
+
+            const highlightId = hash.substring('#highlight-'.length);
+            const highlightMark = document.querySelector(`mark[data-highlight-id="${highlightId}"]`);
+
+            if (highlightMark) {
+                const mainContainer = document.getElementById('main');
+                const containerRect = mainContainer.getBoundingClientRect();
+                const targetRect = highlightMark.getBoundingClientRect();
+
+                // Calculate scroll position to center the highlight in view
+                const scrollTo = mainContainer.scrollTop + (targetRect.top - containerRect.top) - (containerRect.height / 3);
+
+                // Smooth scroll to the highlight
+                mainContainer.scrollTo({
+                    top: Math.max(0, scrollTo),
+                    behavior: 'smooth'
+                });
+
+                // Add a temporary visual emphasis to show which highlight we scrolled to
+                const originalBackground = highlightMark.style.backgroundColor;
+                highlightMark.style.backgroundColor = '#ff6b6b';
+                highlightMark.style.transition = 'background-color 0.3s';
+                setTimeout(() => {
+                    highlightMark.style.backgroundColor = originalBackground || '';
+                    setTimeout(() => {
+                        highlightMark.style.transition = '';
+                    }, 300);
+                }, 2000);
+            } else {
+                console.log('Highlight not found:', highlightId);
             }
         }
 
