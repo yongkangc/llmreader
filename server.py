@@ -1,17 +1,25 @@
 import os
+
+# Load .env file before any other imports that might use env vars
+from dotenv import load_dotenv
+load_dotenv()
+
 import pickle
 import shutil
 import json
 import uuid
+import secrets
+import time
 from functools import lru_cache
 from typing import Optional, Dict, List, Any
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, Request, HTTPException, UploadFile, File
-from fastapi.responses import HTMLResponse, FileResponse, Response
+from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form
+from fastapi.responses import HTMLResponse, FileResponse, Response, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 from reader3 import (
     Book,
@@ -23,11 +31,135 @@ from reader3 import (
     save_to_pickle,
 )
 
+# --- Authentication Configuration ---
+AUTH_PASSWORD = os.environ.get("LLMREADER_PASSWORD")
+SECRET_KEY = os.environ.get("LLMREADER_SECRET_KEY", secrets.token_hex(32))
+COOKIE_NAME = "llmreader_auth"
+SESSION_DURATION = 30 * 24 * 60 * 60  # 30 days in seconds
+
+# Rate limiting for failed login attempts
+LOGIN_ATTEMPTS: Dict[str, List[float]] = {}  # IP -> list of timestamps
+MAX_ATTEMPTS = 5
+RATE_LIMIT_WINDOW = 15 * 60  # 15 minutes
+
+if not AUTH_PASSWORD:
+    raise RuntimeError(
+        "LLMREADER_PASSWORD environment variable is required. "
+        "Set it to a password to protect your library."
+    )
+
+# Cookie serializer
+cookie_serializer = URLSafeTimedSerializer(SECRET_KEY)
+
+
+def create_auth_cookie() -> str:
+    """Create a signed auth cookie with current timestamp."""
+    return cookie_serializer.dumps({"authenticated": True, "timestamp": time.time()})
+
+
+def verify_cookie(cookie: Optional[str]) -> bool:
+    """Verify auth cookie signature and check expiration."""
+    if not cookie:
+        return False
+    try:
+        data = cookie_serializer.loads(cookie, max_age=SESSION_DURATION)
+        return data.get("authenticated", False)
+    except (BadSignature, SignatureExpired):
+        return False
+
+
+def check_rate_limit(ip: str) -> bool:
+    """Check if IP is under rate limit. Returns True if allowed."""
+    now = time.time()
+    attempts = LOGIN_ATTEMPTS.get(ip, [])
+    # Remove attempts older than the window
+    attempts = [t for t in attempts if now - t < RATE_LIMIT_WINDOW]
+    LOGIN_ATTEMPTS[ip] = attempts
+    return len(attempts) < MAX_ATTEMPTS
+
+
+def record_failed_attempt(ip: str) -> None:
+    """Record a failed login attempt for rate limiting."""
+    now = time.time()
+    if ip not in LOGIN_ATTEMPTS:
+        LOGIN_ATTEMPTS[ip] = []
+    LOGIN_ATTEMPTS[ip].append(now)
+
+
+def get_client_ip(request: Request) -> str:
+    """Get client IP, accounting for proxies like Cloudflare."""
+    # Check for Cloudflare header first
+    cf_ip = request.headers.get("CF-Connecting-IP")
+    if cf_ip:
+        return cf_ip
+    # Check X-Forwarded-For
+    xff = request.headers.get("X-Forwarded-For")
+    if xff:
+        return xff.split(",")[0].strip()
+    # Fall back to direct client
+    return request.client.host if request.client else "unknown"
+
+
+def _hash_password(password: str) -> str:
+    """Create a keyed hash of the password using HMAC-SHA256."""
+    import hashlib
+    import hmac
+    return hmac.new(
+        SECRET_KEY.encode("utf-8"),
+        password.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+
+def verify_password(input_password: str) -> bool:
+    """Verify password using HMAC hashes and constant-time comparison."""
+    # Hash both passwords with the secret key, then compare hashes
+    input_hash = _hash_password(input_password)
+    stored_hash = _hash_password(AUTH_PASSWORD)
+    return secrets.compare_digest(input_hash, stored_hash)
+
+
+def is_https(request: Request) -> bool:
+    """Check if request is over HTTPS (directly or via proxy)."""
+    # Check X-Forwarded-Proto (set by reverse proxies like Cloudflare)
+    proto = request.headers.get("X-Forwarded-Proto", "")
+    if proto.lower() == "https":
+        return True
+    # Check the URL scheme directly
+    return request.url.scheme == "https"
+
+
 app = FastAPI(root_path="/reader")
 templates = Jinja2Templates(directory="templates")
 
 # Add root_path to all templates
 templates.env.globals['root_path'] = "/reader"
+
+
+# --- Authentication Middleware ---
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """Protect all routes except /login."""
+    path = request.url.path
+
+    # Allow login route (both GET and POST)
+    if path == "/login" or path == "/reader/login":
+        return await call_next(request)
+
+    # Check auth cookie
+    cookie = request.cookies.get(COOKIE_NAME)
+    if not verify_cookie(cookie):
+        # Redirect to login with the original URL as 'next' parameter
+        next_url = request.url.path
+        if request.url.query:
+            next_url += "?" + request.url.query
+        return RedirectResponse(
+            url=f"/reader/login?next={next_url}",
+            status_code=302
+        )
+
+    return await call_next(request)
+
 
 # Where are the book folders located?
 BOOKS_DIR = "."
@@ -185,6 +317,68 @@ def load_book_cached(folder_name: str) -> Optional[Book]:
     except Exception as e:
         print(f"Error loading book {folder_name}: {e}")
         return None
+
+
+# --- Authentication Routes ---
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, next: str = "/", error: Optional[str] = None):
+    """Render the login page."""
+    return templates.TemplateResponse(request, "login.html", {
+        "next": next,
+        "error": error
+    })
+
+
+@app.post("/login")
+async def login_submit(
+    request: Request,
+    password: str = Form(...),
+    next: str = Form("/")
+):
+    """Handle login form submission."""
+    client_ip = get_client_ip(request)
+
+    # Check rate limit
+    if not check_rate_limit(client_ip):
+        return templates.TemplateResponse(request, "login.html", {
+            "next": next,
+            "error": "Too many login attempts. Please try again in 15 minutes."
+        }, status_code=429)
+
+    # Verify password using constant-time comparison
+    if not verify_password(password):
+        record_failed_attempt(client_ip)
+        return templates.TemplateResponse(request, "login.html", {
+            "next": next,
+            "error": "Invalid password"
+        }, status_code=401)
+
+    # Create response with redirect
+    # Ensure next URL is safe (relative path only)
+    safe_next = next if next.startswith("/") else "/"
+    response = RedirectResponse(url=safe_next, status_code=302)
+
+    # Set secure cookie
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=create_auth_cookie(),
+        max_age=SESSION_DURATION,
+        httponly=True,  # Prevent JavaScript access (XSS protection)
+        samesite="lax",  # CSRF protection
+        secure=is_https(request),  # Only send over HTTPS when applicable
+    )
+
+    return response
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    """Log out by clearing the auth cookie."""
+    response = RedirectResponse(url="/reader/login", status_code=302)
+    response.delete_cookie(key=COOKIE_NAME)
+    return response
+
 
 @app.get("/", response_class=HTMLResponse)
 async def library_view(request: Request):
