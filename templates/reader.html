@@ -812,31 +812,78 @@
             const highlightMark = document.querySelector(`mark[data-highlight-id="${highlightId}"]`);
 
             if (highlightMark) {
-                const mainContainer = document.getElementById('main');
-                const containerRect = mainContainer.getBoundingClientRect();
-                const targetRect = highlightMark.getBoundingClientRect();
-
-                // Calculate scroll position to center the highlight in view
-                const scrollTo = mainContainer.scrollTop + (targetRect.top - containerRect.top) - (containerRect.height / 3);
-
-                // Smooth scroll to the highlight
-                mainContainer.scrollTo({
-                    top: Math.max(0, scrollTo),
-                    behavior: 'smooth'
-                });
-
-                // Add a temporary visual emphasis to show which highlight we scrolled to
-                const originalBackground = highlightMark.style.backgroundColor;
-                highlightMark.style.backgroundColor = '#ff6b6b';
-                highlightMark.style.transition = 'background-color 0.3s';
-                setTimeout(() => {
-                    highlightMark.style.backgroundColor = originalBackground || '';
-                    setTimeout(() => {
-                        highlightMark.style.transition = '';
-                    }, 300);
-                }, 2000);
+                scrollToElementAndHighlight(highlightMark);
             } else {
-                console.log('Highlight not found:', highlightId);
+                // Fallback: try to scroll to the approximate position using offset
+                const highlight = loadedHighlights.find(h => h.id === highlightId);
+                if (highlight && highlight.start_offset) {
+                    scrollToOffset(highlight.start_offset, highlight.text);
+                } else {
+                    console.log('Highlight not found:', highlightId);
+                }
+            }
+        }
+
+        // Helper function to scroll to an element and highlight it
+        function scrollToElementAndHighlight(element) {
+            const mainContainer = document.getElementById('main');
+            const containerRect = mainContainer.getBoundingClientRect();
+            const targetRect = element.getBoundingClientRect();
+
+            // Calculate scroll position to center the highlight in view
+            const scrollTo = mainContainer.scrollTop + (targetRect.top - containerRect.top) - (containerRect.height / 3);
+
+            // Smooth scroll to the highlight
+            mainContainer.scrollTo({
+                top: Math.max(0, scrollTo),
+                behavior: 'smooth'
+            });
+
+            // Add a temporary visual emphasis to show which highlight we scrolled to
+            const originalBackground = element.style.backgroundColor;
+            element.style.backgroundColor = '#ff6b6b';
+            element.style.transition = 'background-color 0.3s';
+            setTimeout(() => {
+                element.style.backgroundColor = originalBackground || '';
+                setTimeout(() => {
+                    element.style.transition = '';
+                }, 300);
+            }, 2000);
+        }
+
+        // Scroll to a position in the content based on text offset
+        function scrollToOffset(targetOffset, searchText) {
+            const content = document.getElementById('chapterContent');
+            const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT, null);
+
+            let currentOffset = 0;
+            let node;
+
+            while (node = walker.nextNode()) {
+                const nodeLength = node.textContent.length;
+                const nodeEndOffset = currentOffset + nodeLength;
+
+                // Check if target offset falls within this node or text is found
+                if (targetOffset < nodeEndOffset || node.textContent.includes(searchText)) {
+                    // Found the approximate location - scroll to this node's parent element
+                    let targetElement = node.parentElement;
+
+                    // Try to find a better parent (paragraph, div, etc.)
+                    while (targetElement && !['P', 'DIV', 'SECTION', 'ARTICLE', 'LI', 'BLOCKQUOTE'].includes(targetElement.tagName)) {
+                        if (targetElement.parentElement && targetElement.parentElement.id !== 'chapterContent') {
+                            targetElement = targetElement.parentElement;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    if (targetElement) {
+                        scrollToElementAndHighlight(targetElement);
+                    }
+                    return;
+                }
+
+                currentOffset += nodeLength;
             }
         }
 
@@ -904,7 +951,7 @@
                     const text = node.textContent;
                     const localIndex = text.indexOf(highlightText);
 
-                    if (localIndex !== -1 && currentOffset + localIndex >= targetOffset) {
+                    if (localIndex !== -1) {
                         try {
                             const range = document.createRange();
                             range.setStart(node, localIndex);
@@ -917,6 +964,7 @@
 
                             range.surroundContents(mark);
                             mark.addEventListener('click', (e) => showHighlightPopup(e, highlight.id));
+                            found = true;
                             break;
                         } catch (e) {
                             console.warn('Fallback highlight failed:', e);
@@ -925,6 +973,8 @@
                     currentOffset += text.length;
                 }
             }
+
+            return found;
         }
 
         // Text selection detection
