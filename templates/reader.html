@@ -1325,6 +1325,37 @@
         // ===== READING PROGRESS TRACKING =====
         const totalChapters = {{ book.spine|length }};
 
+        // Restore scroll position when returning to a chapter
+        async function restoreScrollPosition() {
+            // Don't restore if there's a hash anchor (user clicked a specific TOC item)
+            if (window.location.hash) return;
+
+            try {
+                const response = await fetch(`{{ root_path }}/api/books/${bookId}/progress`);
+                const progress = await response.json();
+
+                // Only restore if we're on the same chapter that was saved
+                if (progress.chapter_index === chapterIndex && progress.scroll_percent > 0) {
+                    const mainContainer = document.getElementById('main');
+                    const scrollableHeight = mainContainer.scrollHeight - mainContainer.clientHeight;
+                    const targetScroll = progress.scroll_percent * scrollableHeight;
+
+                    // Small delay to ensure content is fully rendered
+                    setTimeout(() => {
+                        mainContainer.scrollTo({
+                            top: targetScroll,
+                            behavior: 'instant'
+                        });
+                    }, 100);
+                }
+            } catch (err) {
+                console.error('Failed to restore scroll position:', err);
+            }
+        }
+
+        // Restore scroll position on page load
+        window.addEventListener('load', restoreScrollPosition);
+
         function saveProgress() {
             const mainContainer = document.getElementById('main');
             const scrollPercent = mainContainer.scrollTop / (mainContainer.scrollHeight - mainContainer.clientHeight);
