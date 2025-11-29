@@ -17,3 +17,9 @@ server.log
 
 # Secrets
 .env
+
+# Local scripts & logs
+start.sh
+stop.sh
+tunnel.log
+.tunnel.pid
