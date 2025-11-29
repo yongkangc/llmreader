@@ -1326,16 +1326,20 @@
         const totalChapters = {{ book.spine|length }};
 
         // Restore scroll position when returning to a chapter
+        let scrollRestored = false;
         async function restoreScrollPosition() {
             // Don't restore if there's a hash anchor (user clicked a specific TOC item)
-            if (window.location.hash) return;
+            if (window.location.hash) {
+                scrollRestored = true;
+                return;
+            }
 
             try {
                 const response = await fetch(`{{ root_path }}/api/books/${bookId}/progress`);
                 const progress = await response.json();
 
                 // Only restore if we're on the same chapter that was saved
-                if (progress.chapter_index === chapterIndex && progress.scroll_percent > 0) {
+                if (progress.chapter_index === chapterIndex && progress.scroll_percent > 0.01) {
                     const mainContainer = document.getElementById('main');
                     const scrollableHeight = mainContainer.scrollHeight - mainContainer.clientHeight;
                     const targetScroll = progress.scroll_percent * scrollableHeight;
@@ -1346,10 +1350,14 @@
                             top: targetScroll,
                             behavior: 'instant'
                         });
+                        scrollRestored = true;
                     }, 100);
+                } else {
+                    scrollRestored = true;
                 }
             } catch (err) {
                 console.error('Failed to restore scroll position:', err);
+                scrollRestored = true;
             }
         }
 
@@ -1382,9 +1390,20 @@
         // Save progress on page unload
         window.addEventListener('beforeunload', saveProgress);
 
-        // Save progress on chapter load
+        // Save progress on chapter load (after scroll restoration completes)
         window.addEventListener('load', () => {
-            setTimeout(saveProgress, 500);
+            // Wait for scroll restoration before saving, to avoid overwriting with 0%
+            const waitForRestore = setInterval(() => {
+                if (scrollRestored) {
+                    clearInterval(waitForRestore);
+                    setTimeout(saveProgress, 200);
+                }
+            }, 50);
+            // Fallback: save after 2 seconds regardless
+            setTimeout(() => {
+                clearInterval(waitForRestore);
+                saveProgress();
+            }, 2000);
         });
     </script>
 </body>
