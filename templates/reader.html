@@ -1253,12 +1253,20 @@
                 hideHighlightToolbar();
             }
 
-            // Close sidebar on mobile when clicking backdrop
+            // Close/collapse sidebar when clicking on main content area
             const isMobile = window.innerWidth <= 768;
-            if (isMobile && document.body.classList.contains('sidebar-open')) {
-                // Check if click is outside sidebar
-                if (!e.target.closest('#sidebar') && !e.target.closest('.sidebar-toggle')) {
+            const clickedOnMain = e.target.closest('#main');
+            const clickedOutsideSidebar = !e.target.closest('#sidebar') && !e.target.closest('.sidebar-toggle');
+
+            if (clickedOutsideSidebar && clickedOnMain) {
+                if (isMobile && document.body.classList.contains('sidebar-open')) {
+                    // On mobile, close the sidebar overlay
                     document.body.classList.remove('sidebar-open');
+                    updateSidebarIcon(true);
+                    localStorage.setItem('sidebar', 'closed');
+                } else if (!isMobile && !document.body.classList.contains('sidebar-collapsed')) {
+                    // On desktop, collapse the sidebar
+                    document.body.classList.add('sidebar-collapsed');
                     updateSidebarIcon(true);
                     localStorage.setItem('sidebar', 'closed');
                 }
