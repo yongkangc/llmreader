@@ -37,7 +37,7 @@ function toggleDarkMode() {
 
 /**
  * Initialize theme based on localStorage or system preference.
- * Call this on page load.
+ * Called automatically when DOM is ready.
  */
 function initTheme() {
     const stored = localStorage.getItem('theme');
@@ -50,5 +50,10 @@ function initTheme() {
     }
 }
 
-// Auto-initialize on script load
-initTheme();
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTheme);
+} else {
+    // DOM already loaded (script loaded at end of body or deferred)
+    initTheme();
+}
