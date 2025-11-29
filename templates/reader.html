@@ -325,6 +325,127 @@
             background: var(--accent-success);
         }
 
+        /* Font Settings */
+        .font-settings-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+        }
+        .font-settings-btn {
+            background: var(--bg-button);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-medium);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-family: -apple-system, sans-serif;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .font-settings-btn:hover {
+            background: var(--bg-button-hover);
+            border-color: var(--border-dark);
+        }
+        .font-settings-panel {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background: var(--bg-button);
+            border: 1px solid var(--border-medium);
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 100;
+            min-width: 220px;
+            font-family: -apple-system, sans-serif;
+        }
+        .font-settings-panel.show {
+            display: block;
+        }
+        .font-size-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .font-size-control label {
+            font-size: 0.85em;
+            color: var(--text-muted);
+        }
+        .font-size-buttons {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .font-size-btn {
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border-medium);
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .font-size-btn:hover {
+            background: var(--bg-button-hover);
+            border-color: var(--border-dark);
+        }
+        .font-size-value {
+            min-width: 40px;
+            text-align: center;
+            font-size: 0.9em;
+            color: var(--text-primary);
+        }
+        .font-family-control label {
+            display: block;
+            font-size: 0.85em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        .font-family-options {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .font-family-option {
+            background: var(--bg-main);
+            border: 1px solid var(--border-medium);
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            color: var(--text-primary);
+        }
+        .font-family-option:hover {
+            background: var(--bg-button-hover);
+            border-color: var(--border-dark);
+        }
+        .font-family-option.active {
+            border-color: var(--accent-primary);
+            background: var(--bg-button-hover);
+        }
+        .font-family-option.font-serif {
+            font-family: Georgia, 'Times New Roman', serif;
+        }
+        .font-family-option.font-sans {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .font-family-option.font-mono {
+            font-family: 'SF Mono', Menlo, Consolas, monospace;
+        }
+
     </style>
 </head>
 <body>
@@ -419,6 +540,37 @@
                     </svg>
                 </button>
             </div>
+            <!-- Font Settings -->
+            <div class="font-settings-container" style="position: relative;">
+                <button class="font-settings-btn" id="fontSettingsBtn" onclick="toggleFontSettings()" title="Font settings">
+                    <span style="font-weight: bold;">Aa</span>
+                </button>
+                <div class="font-settings-panel" id="fontSettingsPanel">
+                    <div class="font-size-control">
+                        <label>Size</label>
+                        <div class="font-size-buttons">
+                            <button class="font-size-btn" onclick="changeFontSize(-1)" title="Decrease font size">−</button>
+                            <span class="font-size-value" id="fontSizeValue">18</span>
+                            <button class="font-size-btn" onclick="changeFontSize(1)" title="Increase font size">+</button>
+                        </div>
+                    </div>
+                    <div class="font-family-control">
+                        <label>Font</label>
+                        <div class="font-family-options">
+                            <button class="font-family-option font-serif active" data-font="serif" onclick="changeFontFamily('serif')">
+                                Georgia (Serif)
+                            </button>
+                            <button class="font-family-option font-sans" data-font="sans" onclick="changeFontFamily('sans')">
+                                System (Sans-serif)
+                            </button>
+                            <button class="font-family-option font-mono" data-font="mono" onclick="changeFontFamily('mono')">
+                                Monospace
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <article class="book-content" id="chapterContent">
                 {{ current_chapter.content | safe }}
             </article>
@@ -710,6 +862,92 @@
 
         // Initialize theme on page load (before body renders to avoid flash)
         initTheme();
+
+        // ===== FONT SETTINGS =====
+        const fontFamilies = {
+            serif: 'Georgia, "Times New Roman", serif',
+            sans: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            mono: '"SF Mono", Menlo, Consolas, monospace'
+        };
+
+        let currentFontSize = 18;
+        let currentFontFamily = 'serif';
+
+        function toggleFontSettings() {
+            const panel = document.getElementById('fontSettingsPanel');
+            panel.classList.toggle('show');
+        }
+
+        function changeFontSize(delta) {
+            const minSize = 12;
+            const maxSize = 28;
+            currentFontSize = Math.max(minSize, Math.min(maxSize, currentFontSize + delta));
+            applyFontSettings();
+            saveFontSettings();
+        }
+
+        function changeFontFamily(family) {
+            currentFontFamily = family;
+
+            // Update active button state
+            document.querySelectorAll('.font-family-option').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.font === family) {
+                    btn.classList.add('active');
+                }
+            });
+
+            applyFontSettings();
+            saveFontSettings();
+        }
+
+        function applyFontSettings() {
+            const content = document.getElementById('chapterContent');
+            content.style.fontSize = currentFontSize + 'px';
+            content.style.fontFamily = fontFamilies[currentFontFamily];
+
+            // Update the size display
+            document.getElementById('fontSizeValue').textContent = currentFontSize;
+        }
+
+        function saveFontSettings() {
+            localStorage.setItem('readerFontSize', currentFontSize);
+            localStorage.setItem('readerFontFamily', currentFontFamily);
+        }
+
+        function loadFontSettings() {
+            const savedSize = localStorage.getItem('readerFontSize');
+            const savedFamily = localStorage.getItem('readerFontFamily');
+
+            if (savedSize) {
+                currentFontSize = parseInt(savedSize, 10);
+            }
+            if (savedFamily && fontFamilies[savedFamily]) {
+                currentFontFamily = savedFamily;
+            }
+
+            // Update active button state
+            document.querySelectorAll('.font-family-option').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.font === currentFontFamily) {
+                    btn.classList.add('active');
+                }
+            });
+
+            applyFontSettings();
+        }
+
+        // Initialize font settings
+        loadFontSettings();
+
+        // Close font panel when clicking outside
+        document.addEventListener('click', (e) => {
+            const panel = document.getElementById('fontSettingsPanel');
+            const btn = document.getElementById('fontSettingsBtn');
+            if (!panel.contains(e.target) && !btn.contains(e.target)) {
+                panel.classList.remove('show');
+            }
+        });
 
         // Sidebar Toggle Functions
         function updateSidebarIcon(isCollapsed) {
