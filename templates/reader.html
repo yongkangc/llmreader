@@ -152,9 +152,13 @@
             color: var(--text-primary);
         }
         a.toc-link.active {
-            background: var(--accent-primary);
-            color: white;
+            color: var(--accent-active);
+            font-weight: 600;
+        }
+        a.toc-link.active-parent {
+            color: var(--accent-active);
             font-weight: 500;
+            opacity: 0.7;
         }
 
         /* Main Content */
@@ -169,19 +173,21 @@
         }
 
         .content-container {
-            max-width: 680px;
+            max-width: 650px;
             margin: 0 auto;
-            padding: 80px 48px 60px;
+            padding: 60px 48px;
             position: relative;
             transition: max-width 0.3s ease;
         }
 
-        body.sidebar-collapsed .content-container { max-width: 760px; }
+        body.sidebar-collapsed .content-container { max-width: 720px; }
 
-        /* Book Content */
+        /* Book Content - Optimized for comfortable reading */
         .book-content {
-            font-size: 1.125rem;
-            line-height: 1.85;
+            font-size: 1.2em;
+            line-height: 1.9;
+            letter-spacing: 0.01em;
+            word-spacing: 0.05em;
             color: var(--text-primary);
             overflow-wrap: break-word;
             word-wrap: break-word;
@@ -191,7 +197,7 @@
             max-width: 100%;
             height: auto;
             display: block;
-            margin: 32px auto;
+            margin: 2.5em auto;
             border-radius: var(--radius-sm);
         }
 
@@ -199,26 +205,64 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             color: var(--heading-color);
             margin-top: 2em;
-            margin-bottom: 0.75em;
-            line-height: 1.3;
+            margin-bottom: 1em;
+            line-height: 1.35;
             font-weight: 600;
+            letter-spacing: -0.01em;
         }
-        .book-content h1 { font-size: 1.75rem; }
-        .book-content h2 { font-size: 1.375rem; }
-        .book-content h3 { font-size: 1.125rem; }
+        .book-content h1 { font-size: 1.75em; margin-top: 1.5em; }
+        .book-content h2 { font-size: 1.4em; }
+        .book-content h3 { font-size: 1.15em; }
 
         .book-content p {
-            margin-bottom: 1.5em;
+            margin-bottom: 1.6em;
             text-align: justify;
             hyphens: auto;
+            -webkit-hyphens: auto;
+            text-justify: inter-word;
+        }
+
+        .book-content p + p {
+            text-indent: 1.5em;
+            margin-top: -0.4em;
         }
 
         .book-content blockquote {
             border-left: 3px solid var(--accent-primary);
-            padding-left: 1.25em;
-            margin: 1.5em 0;
+            padding-left: 1.5em;
+            margin: 2em 0;
             color: var(--text-secondary);
             font-style: italic;
+        }
+
+        .book-content ul, .book-content ol {
+            margin: 1.5em 0;
+            padding-left: 1.5em;
+        }
+
+        .book-content li {
+            margin-bottom: 0.5em;
+            line-height: 1.7;
+        }
+
+        .book-content a {
+            color: var(--accent-primary);
+            text-decoration: underline;
+            text-decoration-thickness: 1px;
+            text-underline-offset: 2px;
+        }
+
+        .book-content pre, .book-content code {
+            font-family: "SF Mono", "Monaco", "Menlo", monospace;
+            font-size: 0.9em;
+        }
+
+        .book-content pre {
+            background: var(--bg-sidebar);
+            padding: 1em 1.25em;
+            border-radius: var(--radius-sm);
+            overflow-x: auto;
+            margin: 1.5em 0;
         }
 
         /* Top Action Buttons */
@@ -301,7 +345,16 @@
 
             .content-container {
                 max-width: 100%;
-                padding: 72px 20px 40px;
+                padding: 56px 24px 40px;
+            }
+
+            .book-content {
+                font-size: 1.1em;
+                line-height: 1.85;
+            }
+
+            .book-content p + p {
+                text-indent: 1em;
             }
 
             .sidebar-toggle {
@@ -751,39 +804,30 @@
         }
 
         function updateActiveTOCItem() {
-            console.log('=== updateActiveTOCItem called ===');
-
             // Get current chapter index and hash from the URL
             const pathParts = window.location.pathname.split('/');
             const currentChapterIndex = parseInt(pathParts[pathParts.length - 1]);
             const currentHash = window.location.hash.substring(1); // Remove the #
 
-            console.log('Current pathname:', window.location.pathname);
-            console.log('Chapter index:', currentChapterIndex);
-            console.log('Current hash:', currentHash);
-
             // Find the current chapter's href from spine
             const spineEntries = Object.entries(spineMap);
             const currentChapterFile = spineEntries.find(([file, idx]) => idx === currentChapterIndex)?.[0];
 
-            console.log('Current chapter file:', currentChapterFile);
-
             if (!currentChapterFile) {
-                console.log('ERROR: No chapter file found for index', currentChapterIndex);
                 return;
             }
 
             // Build the full href we're looking for
             const targetHref = currentHash ? `${currentChapterFile}#${currentHash}` : currentChapterFile;
-            console.log('Target href to match:', targetHref);
 
-            // Remove active class from all TOC links
+            // Remove active and active-parent classes from all TOC links
             document.querySelectorAll('.toc-link').forEach(link => {
                 link.classList.remove('active');
+                link.classList.remove('active-parent');
             });
 
             // Find and activate the matching TOC link
-            let matchFound = false;
+            let activeLink = null;
             document.querySelectorAll('.toc-link').forEach(link => {
                 const onclick = link.getAttribute('onclick');
                 if (onclick) {
@@ -792,16 +836,23 @@
                     if (match) {
                         const linkHref = match[1];
                         if (linkHref === targetHref) {
-                            console.log('MATCH FOUND:', linkHref, link.textContent.trim().substring(0, 50));
                             link.classList.add('active');
-                            matchFound = true;
+                            activeLink = link;
                         }
                     }
                 }
             });
 
-            if (!matchFound) {
-                console.log('WARNING: No matching TOC link found for', targetHref);
+            // If we found an active link, also highlight its parent chapter(s)
+            if (activeLink) {
+                let parentItem = activeLink.closest('.toc-item')?.parentElement?.closest('.toc-item');
+                while (parentItem) {
+                    const parentLink = parentItem.querySelector(':scope > .toc-link');
+                    if (parentLink) {
+                        parentLink.classList.add('active-parent');
+                    }
+                    parentItem = parentItem.parentElement?.closest('.toc-item');
+                }
             }
 
             // Scroll sidebar to show the active item (with small delay to ensure DOM has updated)
@@ -1419,12 +1470,20 @@
                 hideHighlightToolbar();
             }
 
-            // Close sidebar on mobile when clicking backdrop
+            // Close/collapse sidebar when clicking on main content area
             const isMobile = window.innerWidth <= 768;
-            if (isMobile && document.body.classList.contains('sidebar-open')) {
-                // Check if click is outside sidebar
-                if (!e.target.closest('#sidebar') && !e.target.closest('.sidebar-toggle')) {
+            const clickedOnMain = e.target.closest('#main');
+            const clickedOutsideSidebar = !e.target.closest('#sidebar') && !e.target.closest('.sidebar-toggle');
+
+            if (clickedOutsideSidebar && clickedOnMain) {
+                if (isMobile && document.body.classList.contains('sidebar-open')) {
+                    // On mobile, close the sidebar overlay
                     document.body.classList.remove('sidebar-open');
+                    updateSidebarIcon(true);
+                    localStorage.setItem('sidebar', 'closed');
+                } else if (!isMobile && !document.body.classList.contains('sidebar-collapsed')) {
+                    // On desktop, collapse the sidebar
+                    document.body.classList.add('sidebar-collapsed');
                     updateSidebarIcon(true);
                     localStorage.setItem('sidebar', 'closed');
                 }
