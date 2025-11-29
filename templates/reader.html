@@ -67,7 +67,7 @@
         body { margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; font-family: "Georgia", serif; background: var(--bg-main); transition: background-color 0.3s, color 0.3s; }
 
         /* Sidebar */
-        #sidebar { width: 300px; background: var(--bg-sidebar); border-right: 1px solid var(--border-light); overflow-y: auto; padding: 20px; flex-shrink: 0; transition: transform 0.3s ease, width 0.3s ease, padding 0.3s ease, background-color 0.3s, border-color 0.3s; position: relative; z-index: 10; }
+        #sidebar { width: 300px; background: var(--bg-sidebar); border-right: 1px solid var(--border-light); overflow-y: auto; padding: 60px 20px 20px 20px; flex-shrink: 0; transition: transform 0.3s ease, width 0.3s ease, padding 0.3s ease, background-color 0.3s, border-color 0.3s; position: relative; z-index: 10; }
 
         /* Sidebar Collapsed State */
         body.sidebar-collapsed #sidebar { transform: translateX(-100%); width: 0; padding: 0; border-right: none; overflow: hidden; }
@@ -94,23 +94,16 @@
         .book-content h1, .book-content h2, .book-content h3 { font-family: -apple-system, sans-serif; margin-top: 1.5em; color: var(--heading-color); transition: color 0.3s; }
         .book-content p { margin-bottom: 1.5em; text-align: justify; color: var(--text-primary); transition: color 0.3s; }
 
-        /* Copy Button */
-        .copy-btn { position: absolute; top: 20px; right: 160px; background: var(--bg-button); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.3s; }
-        .copy-btn:hover { background: var(--bg-button-hover); border-color: var(--border-dark); }
-        .copy-btn.copied { background: var(--accent-success); color: white; border-color: var(--accent-success); }
-
-        /* Highlights Button */
-        .highlights-btn { position: absolute; top: 20px; right: 100px; background: var(--bg-button); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.3s; text-decoration: none; display: inline-flex; align-items: center; }
-        .highlights-btn:hover { background: var(--bg-button-hover); border-color: var(--border-dark); }
+        /* Top Action Buttons - aligned in a row */
+        .top-actions { position: absolute; top: 20px; right: 20px; display: flex; gap: 8px; align-items: center; z-index: 15; }
+        .top-btn { background: var(--bg-button); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.3s; text-decoration: none; display: inline-flex; align-items: center; }
+        .top-btn:hover { background: var(--bg-button-hover); border-color: var(--border-dark); }
+        .top-btn.copied { background: var(--accent-success); color: white; border-color: var(--accent-success); }
 
         /* Sidebar Toggle */
         .sidebar-toggle { position: fixed; top: 20px; left: 20px; background: var(--bg-button); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.3s; z-index: 20; }
         .sidebar-toggle:hover { background: var(--bg-button-hover); border-color: var(--border-dark); }
-        body.sidebar-collapsed .sidebar-toggle { left: auto; right: 160px; }
-
-        /* Dark Mode Toggle */
-        .theme-toggle { position: absolute; top: 20px; right: 40px; background: var(--bg-button); color: var(--text-secondary); border: 1px solid var(--border-medium); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 1.2em; transition: all 0.3s; }
-        .theme-toggle:hover { background: var(--bg-button-hover); border-color: var(--border-dark); }
+        body.sidebar-collapsed .sidebar-toggle { left: 20px; }
 
         /* Responsive: Auto-collapse sidebar on mobile */
         @media (max-width: 768px) {
@@ -373,25 +366,27 @@
     <!-- MAIN CONTENT -->
     <main id="main">
         <div class="content-container">
-            <button class="copy-btn" id="copyBtn" onclick="copyChapter()" title="Copy to clipboard for LLM">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z"></path>
-                    <path d="M2 6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h-1v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1V6H2Z"></path>
-                </svg>
-            </button>
-            <a href="{{ root_path }}/highlights" class="highlights-btn" title="View all highlights">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2Z"/>
-                    <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2z"/>
-                    <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1z"/>
-                </svg>
-            </a>
-            <button class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()" title="Toggle dark mode">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="themeIcon">
-                    <!-- Moon icon (default for light mode) -->
-                    <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"></path>
-                </svg>
-            </button>
+            <!-- Top Action Buttons -->
+            <div class="top-actions">
+                <button class="top-btn" id="copyBtn" onclick="copyChapter()" title="Copy to clipboard for LLM">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Z"></path>
+                        <path d="M2 6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h-1v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1V6H2Z"></path>
+                    </svg>
+                </button>
+                <a href="{{ root_path }}/highlights" class="top-btn" title="View all highlights">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2Z"/>
+                        <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2z"/>
+                        <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1z"/>
+                    </svg>
+                </a>
+                <button class="top-btn" id="themeToggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="themeIcon">
+                        <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"></path>
+                    </svg>
+                </button>
+            </div>
             <article class="book-content" id="chapterContent">
                 {{ current_chapter.content | safe }}
             </article>
