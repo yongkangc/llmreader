@@ -167,6 +167,9 @@ BOOKS_DIR = "."
 # Highlights storage
 HIGHLIGHTS_FILE = "highlights.json"
 
+# Reading progress storage
+PROGRESS_FILE = "reading_progress.json"
+
 
 def _sanitize_filename(filename: str, fallback_ext: str) -> str:
     """Return a filesystem-safe filename, ensuring an extension exists."""
@@ -205,6 +208,32 @@ def save_highlights(highlights: Dict[str, Any]) -> None:
     except Exception as e:
         print(f"Error saving highlights: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to save highlights: {e}")
+
+
+# --- Reading Progress Storage Functions ---
+
+def load_progress() -> Dict[str, Any]:
+    """Load reading progress from JSON file."""
+    if not os.path.exists(PROGRESS_FILE):
+        return {}
+    try:
+        with open(PROGRESS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error loading progress: {e}")
+        return {}
+
+
+def save_progress(progress: Dict[str, Any]) -> None:
+    """Save reading progress to JSON file atomically."""
+    try:
+        temp_file = PROGRESS_FILE + '.tmp'
+        with open(temp_file, 'w', encoding='utf-8') as f:
+            json.dump(progress, f, indent=2, ensure_ascii=False)
+        os.replace(temp_file, PROGRESS_FILE)
+    except Exception as e:
+        print(f"Error saving progress: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save progress: {e}")
 
 
 def get_highlight_by_id(highlight_id: str) -> tuple[Optional[str], Optional[Dict], Optional[int]]:
@@ -402,6 +431,7 @@ async def library_view(request: Request):
     """Lists all available processed books."""
     books = []
     all_tags = set()
+    progress_data = load_progress()
 
     # Scan directory for folders ending in '_data' that have a book.pkl
     if os.path.exists(BOOKS_DIR):
@@ -414,6 +444,7 @@ async def library_view(request: Request):
                     tags = getattr(book.metadata, 'tags', [])
                     all_tags.update(tags)
                     cover_image = find_cover_image(book, item)
+                    book_progress = progress_data.get(item, {})
                     books.append({
                         "id": item,
                         "title": book.metadata.title,
@@ -421,7 +452,9 @@ async def library_view(request: Request):
                         "chapters": len(book.spine),
                         "tags": tags,
                         "cover_image": cover_image,
-                        "processed_at": getattr(book, 'processed_at', '2000-01-01')
+                        "processed_at": getattr(book, 'processed_at', '2000-01-01'),
+                        "progress": book_progress.get("percent_complete", 0),
+                        "last_chapter": book_progress.get("chapter_index", 0)
                     })
 
     # Sort books by processed_at descending (newest first)
@@ -608,6 +641,51 @@ async def update_book_tags(book_id: str, request: Request):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update tags: {e}")
+
+
+# --- Reading Progress API ---
+
+@app.get("/api/progress")
+async def get_all_progress():
+    """Get reading progress for all books."""
+    return load_progress()
+
+
+@app.get("/api/books/{book_id}/progress")
+async def get_book_progress(book_id: str):
+    """Get reading progress for a specific book."""
+    progress = load_progress()
+    return progress.get(book_id, {"chapter_index": 0, "scroll_percent": 0, "percent_complete": 0})
+
+
+@app.put("/api/books/{book_id}/progress")
+async def update_book_progress(book_id: str, request: Request):
+    """
+    Update reading progress for a specific book.
+    Expects JSON body: {"chapter_index": 0, "scroll_percent": 0.5, "total_chapters": 10}
+    """
+    try:
+        body = await request.json()
+        chapter_index = body.get("chapter_index", 0)
+        scroll_percent = body.get("scroll_percent", 0)
+        total_chapters = body.get("total_chapters", 1)
+
+        # Calculate overall progress: (chapter + scroll within chapter) / total chapters
+        percent_complete = ((chapter_index + scroll_percent) / total_chapters) * 100
+        percent_complete = min(100, max(0, percent_complete))
+
+        progress = load_progress()
+        progress[book_id] = {
+            "chapter_index": chapter_index,
+            "scroll_percent": round(scroll_percent, 4),
+            "percent_complete": round(percent_complete, 1),
+            "updated_at": datetime.now().isoformat()
+        }
+        save_progress(progress)
+
+        return progress[book_id]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update progress: {e}")
 
 
 # --- Highlights API ---

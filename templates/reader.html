@@ -1275,6 +1275,40 @@
 
         // Load highlights when page is ready
         window.addEventListener('load', loadHighlights);
+
+        // ===== READING PROGRESS TRACKING =====
+        const totalChapters = {{ book.spine|length }};
+
+        function saveProgress() {
+            const mainContainer = document.getElementById('main');
+            const scrollPercent = mainContainer.scrollTop / (mainContainer.scrollHeight - mainContainer.clientHeight);
+            const clampedScroll = Math.min(1, Math.max(0, scrollPercent || 0));
+
+            fetch(`{{ root_path }}/api/books/${bookId}/progress`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chapter_index: chapterIndex,
+                    scroll_percent: clampedScroll,
+                    total_chapters: totalChapters
+                })
+            }).catch(err => console.error('Failed to save progress:', err));
+        }
+
+        // Debounce scroll saves
+        let progressTimeout = null;
+        document.getElementById('main').addEventListener('scroll', () => {
+            if (progressTimeout) clearTimeout(progressTimeout);
+            progressTimeout = setTimeout(saveProgress, 1000);
+        });
+
+        // Save progress on page unload
+        window.addEventListener('beforeunload', saveProgress);
+
+        // Save progress on chapter load
+        window.addEventListener('load', () => {
+            setTimeout(saveProgress, 500);
+        });
     </script>
 </body>
 </html>

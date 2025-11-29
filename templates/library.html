@@ -94,6 +94,12 @@
         .book-edit { color: var(--text-muted); font-size: 0.8em; padding: 4px 8px; border-radius: 4px; transition: color 0.2s; }
         .book-edit:hover { background: var(--border-medium); color: var(--text-primary); }
 
+        /* Progress Bar */
+        .book-progress { display: flex; align-items: center; gap: 8px; min-width: 100px; }
+        .progress-bar { flex: 1; height: 4px; background: var(--border-medium); border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--accent-primary); border-radius: 2px; transition: width 0.3s; }
+        .progress-text { font-size: 0.75em; color: var(--text-muted); min-width: 35px; text-align: right; }
+
         /* Empty State */
         .empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
 
@@ -169,9 +175,13 @@
                     </div>
                     <div class="tag-section-books">
                         {% for book in books_by_tag[tag] %}
-                        <a href="{{ root_path }}/read/{{ book.id }}/0" class="book-row">
+                        <a href="{{ root_path }}/read/{{ book.id }}/{{ book.last_chapter }}" class="book-row">
                             <span class="book-title">{{ book.title }}</span>
                             <span class="book-author">{{ book.author }}</span>
+                            <div class="book-progress">
+                                <div class="progress-bar"><div class="progress-fill" style="width: {{ book.progress }}%"></div></div>
+                                <span class="progress-text">{{ book.progress|int }}%</span>
+                            </div>
                             <span class="book-edit" onclick="event.preventDefault(); openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title | replace("'", "\\'") }}')">Tags</span>
                         </a>
                         {% endfor %}
@@ -189,9 +199,13 @@
                 </div>
                 <div class="tag-section-books">
                     {% for book in untagged_books %}
-                    <a href="{{ root_path }}/read/{{ book.id }}/0" class="book-row">
+                    <a href="{{ root_path }}/read/{{ book.id }}/{{ book.last_chapter }}" class="book-row">
                         <span class="book-title">{{ book.title }}</span>
                         <span class="book-author">{{ book.author }}</span>
+                        <div class="book-progress">
+                            <div class="progress-bar"><div class="progress-fill" style="width: {{ book.progress }}%"></div></div>
+                            <span class="progress-text">{{ book.progress|int }}%</span>
+                        </div>
                         <span class="book-edit" onclick="event.preventDefault(); openTagEditor('{{ book.id }}', '', '{{ book.title | replace("'", "\\'") }}')">Tags</span>
                     </a>
                     {% endfor %}
