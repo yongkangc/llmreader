@@ -161,6 +161,7 @@
         #main {
             flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
             position: relative;
             scroll-behavior: smooth;
             background: var(--bg-main);
@@ -182,6 +183,8 @@
             font-size: 1.125rem;
             line-height: 1.85;
             color: var(--text-primary);
+            overflow-wrap: break-word;
+            word-wrap: break-word;
         }
 
         .book-content img {
