@@ -42,12 +42,13 @@ function toggleDarkMode() {
 function initTheme() {
     const stored = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const theme = stored || (prefersDark ? 'dark' : 'light');
+    const isDark = stored === 'dark' || (!stored && prefersDark);
 
-    if (theme === 'dark') {
+    if (isDark) {
         document.body.classList.add('dark-mode');
-        updateThemeIcon(true);
     }
+    // Always update icon to match current state
+    updateThemeIcon(isDark);
 }
 
 // Auto-initialize when DOM is ready

@@ -132,6 +132,9 @@ def is_https(request: Request) -> bool:
 app = FastAPI(root_path="/reader")
 templates = Jinja2Templates(directory="templates")
 
+# Mount static files directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 # Add root_path to all templates
 templates.env.globals['root_path'] = "/reader"
 
@@ -139,11 +142,15 @@ templates.env.globals['root_path'] = "/reader"
 # --- Authentication Middleware ---
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    """Protect all routes except /login."""
+    """Protect all routes except /login and /static."""
     path = request.url.path
 
     # Allow login route (both GET and POST)
     if path == "/login" or path == "/reader/login":
+        return await call_next(request)
+
+    # Allow static files (CSS, JS, etc.)
+    if path.startswith("/static/") or path.startswith("/reader/static/"):
         return await call_next(request)
 
     # Check auth cookie
