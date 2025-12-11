@@ -1,0 +1,14 @@
+[Unit]
+Description=LLMReader Server
+After=network.target
+
+[Service]
+Type=simple
+User=yk
+WorkingDirectory=/home/yk/oss/llmreader
+ExecStart=/home/yk/oss/llmreader/.venv/bin/python -m uvicorn server:app --host 127.0.0.1 --port 8123
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

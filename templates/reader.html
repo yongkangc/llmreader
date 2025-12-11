@@ -291,6 +291,28 @@
             margin: 4px 0;
         }
 
+        /* Note Tooltip on Hover */
+        .highlight-note-tooltip {
+            position: absolute;
+            background: var(--bg-button);
+            border: 1px solid var(--border-medium);
+            border-radius: 6px;
+            padding: 8px 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 999;
+            max-width: 300px;
+            font-family: -apple-system, sans-serif;
+            font-size: 0.85em;
+            color: var(--text-primary);
+            pointer-events: none;
+            display: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .highlight-note-tooltip.show {
+            display: block;
+        }
+
         /* Note Editor in Popup */
         .note-editor {
             padding: 8px;
@@ -613,6 +635,9 @@
                     <button onclick="saveNote()">Save Note</button>
                 </div>
             </div>
+
+            <!-- Note Tooltip for Hover -->
+            <div class="highlight-note-tooltip" id="noteTooltip"></div>
         </div>
     </main>
 
@@ -1206,6 +1231,8 @@
 
                             range.surroundContents(mark);
                             mark.addEventListener('click', (e) => showHighlightPopup(e, highlight.id));
+                            mark.addEventListener('mouseenter', (e) => showNoteTooltip(e, highlight.id));
+                            mark.addEventListener('mouseleave', hideNoteTooltip);
                             found = true;
                             break;
                         } catch (e) {
@@ -1238,6 +1265,8 @@
 
                             range.surroundContents(mark);
                             mark.addEventListener('click', (e) => showHighlightPopup(e, highlight.id));
+                            mark.addEventListener('mouseenter', (e) => showNoteTooltip(e, highlight.id));
+                            mark.addEventListener('mouseleave', hideNoteTooltip);
                             found = true;
                             break;
                         } catch (e) {
@@ -1365,12 +1394,16 @@
                         try {
                             range.surroundContents(mark);
                             mark.addEventListener('click', (e) => showHighlightPopup(e, result.highlight.id));
+                            mark.addEventListener('mouseenter', (e) => showNoteTooltip(e, result.highlight.id));
+                            mark.addEventListener('mouseleave', hideNoteTooltip);
                         } catch (e) {
                             // If that fails (selection crosses elements), use extractContents + appendChild
                             const fragment = range.extractContents();
                             mark.appendChild(fragment);
                             range.insertNode(mark);
                             mark.addEventListener('click', (e) => showHighlightPopup(e, result.highlight.id));
+                            mark.addEventListener('mouseenter', (e) => showNoteTooltip(e, result.highlight.id));
+                            mark.addEventListener('mouseleave', hideNoteTooltip);
                         }
 
                         // Add to loaded highlights
@@ -1423,6 +1456,32 @@
             document.getElementById('highlightPopup').classList.remove('show');
             document.getElementById('noteEditor').classList.remove('show');
             currentHighlightId = null;
+        }
+
+        // Note tooltip on hover
+        function showNoteTooltip(e, highlightId) {
+            const highlight = loadedHighlights.find(h => h.id === highlightId);
+            if (!highlight || !highlight.note || !highlight.note.trim()) return;
+
+            const tooltip = document.getElementById('noteTooltip');
+            tooltip.textContent = highlight.note;
+
+            // Position above the highlight
+            const rect = e.target.getBoundingClientRect();
+            const containerRect = document.querySelector('.content-container').getBoundingClientRect();
+
+            // First show tooltip to get its height
+            tooltip.style.visibility = 'hidden';
+            tooltip.classList.add('show');
+            const tooltipHeight = tooltip.offsetHeight;
+
+            tooltip.style.left = `${rect.left - containerRect.left}px`;
+            tooltip.style.top = `${rect.top - containerRect.top - tooltipHeight - 8}px`;
+            tooltip.style.visibility = 'visible';
+        }
+
+        function hideNoteTooltip() {
+            document.getElementById('noteTooltip').classList.remove('show');
         }
 
         // Copy highlight text to clipboard
