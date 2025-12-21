@@ -153,6 +153,10 @@ async def auth_middleware(request: Request, call_next):
     if path.startswith("/static/") or path.startswith("/reader/static/"):
         return await call_next(request)
 
+    # Allow book images (served from /read/{book_id}/images/ or /reader/read/{book_id}/images/)
+    if "/images/" in path and ("/read/" in path):
+        return await call_next(request)
+
     # Check auth cookie
     cookie = request.cookies.get(COOKIE_NAME)
     if not verify_cookie(cookie):
@@ -461,7 +465,8 @@ async def library_view(request: Request):
                         "cover_image": cover_image,
                         "processed_at": getattr(book, 'processed_at', '2000-01-01'),
                         "progress": book_progress.get("percent_complete", 0),
-                        "last_chapter": book_progress.get("chapter_index", 0)
+                        "last_chapter": book_progress.get("chapter_index", 0),
+                        "completed": book_progress.get("completed", False)
                     })
 
     # Sort books by processed_at descending (newest first)
@@ -475,14 +480,65 @@ async def library_view(request: Request):
 @app.get("/read/{book_id}", response_class=HTMLResponse)
 async def redirect_to_first_chapter(book_id: str):
     """Helper to just go to chapter 0."""
-    return await read_chapter(book_id=book_id, chapter_index=0)
+    return RedirectResponse(url=f"/read/{book_id}/0", status_code=302)
 
-@app.get("/read/{book_id}/{chapter_index}", response_class=HTMLResponse)
-async def read_chapter(request: Request, book_id: str, chapter_index: int):
-    """The main reader interface."""
+
+@app.get("/read/{book_id}/images/{image_name:path}")
+async def serve_image(book_id: str, image_name: str):
+    """
+    Serves images specifically for a book.
+    The HTML contains <img src="images/pic.jpg">.
+    The browser resolves this to /read/{book_id}/images/pic.jpg.
+    Must be defined BEFORE the chapter route to take precedence.
+    """
+    safe_book_id = os.path.basename(book_id)
+    safe_image_name = os.path.basename(image_name)
+
+    img_path = os.path.join(BOOKS_DIR, safe_book_id, "images", safe_image_name)
+
+    if not os.path.exists(img_path):
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    return FileResponse(img_path)
+
+
+@app.get("/read/{book_id}/{chapter_ref:path}", response_class=HTMLResponse)
+async def read_chapter(request: Request, book_id: str, chapter_ref: str):
+    """
+    The main reader interface.
+    chapter_ref can be either:
+    - An integer index (e.g., "5")
+    - A chapter filename (e.g., "part0006.html" or "text/part0006.html")
+    """
     book = load_book_cached(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
+
+    # Try to parse as integer first
+    if chapter_ref.isdigit():
+        chapter_index = int(chapter_ref)
+    else:
+        # It's a filename - find the matching chapter index
+        # Handle anchors (e.g., "part0006.html#section1")
+        clean_file = chapter_ref.split('#')[0]
+        anchor = chapter_ref.split('#')[1] if '#' in chapter_ref else None
+        basename = os.path.basename(clean_file)
+
+        chapter_index = None
+        for idx, chapter in enumerate(book.spine):
+            chapter_basename = os.path.basename(chapter.href)
+            if chapter.href == clean_file or chapter_basename == basename or chapter.href == basename:
+                chapter_index = idx
+                break
+
+        if chapter_index is None:
+            raise HTTPException(status_code=404, detail=f"Chapter '{chapter_ref}' not found")
+
+        # Redirect to canonical URL with index (preserving anchor if present)
+        redirect_url = f"/read/{book_id}/{chapter_index}"
+        if anchor:
+            redirect_url += f"#{anchor}"
+        return RedirectResponse(url=redirect_url, status_code=302)
 
     if chapter_index < 0 or chapter_index >= len(book.spine):
         raise HTTPException(status_code=404, detail="Chapter not found")
@@ -501,25 +557,6 @@ async def read_chapter(request: Request, book_id: str, chapter_index: int):
         "prev_idx": prev_idx,
         "next_idx": next_idx
     })
-
-@app.get("/read/{book_id}/images/{image_name}")
-async def serve_image(book_id: str, image_name: str):
-    """
-    Serves images specifically for a book.
-    The HTML contains <img src="images/pic.jpg">.
-    The browser resolves this to /read/{book_id}/images/pic.jpg.
-    """
-    # Security check: ensure book_id is clean
-    safe_book_id = os.path.basename(book_id)
-    safe_image_name = os.path.basename(image_name)
-
-    img_path = os.path.join(BOOKS_DIR, safe_book_id, "images", safe_image_name)
-
-    if not os.path.exists(img_path):
-        raise HTTPException(status_code=404, detail="Image not found")
-
-    return FileResponse(img_path)
-
 
 @app.post("/upload")
 async def upload_epub(file: UploadFile = File(...)):
@@ -682,10 +719,18 @@ async def update_book_progress(book_id: str, request: Request):
         percent_complete = min(100, max(0, percent_complete))
 
         progress = load_progress()
+        existing = progress.get(book_id, {})
+
+        # Auto-mark as completed when reaching 100%
+        completed = existing.get("completed", False)
+        if percent_complete >= 100:
+            completed = True
+
         progress[book_id] = {
             "chapter_index": chapter_index,
             "scroll_percent": round(scroll_percent, 4),
             "percent_complete": round(percent_complete, 1),
+            "completed": completed,
             "updated_at": datetime.now().isoformat()
         }
         save_progress(progress)
@@ -693,6 +738,35 @@ async def update_book_progress(book_id: str, request: Request):
         return progress[book_id]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update progress: {e}")
+
+
+@app.put("/api/books/{book_id}/completed")
+async def toggle_book_completed(book_id: str, request: Request):
+    """
+    Toggle or set the completed status of a book.
+    Expects JSON body: {"completed": true/false}
+    """
+    try:
+        body = await request.json()
+        completed = body.get("completed", False)
+
+        progress = load_progress()
+        if book_id not in progress:
+            progress[book_id] = {
+                "chapter_index": 0,
+                "scroll_percent": 0,
+                "percent_complete": 0,
+                "completed": completed,
+                "updated_at": datetime.now().isoformat()
+            }
+        else:
+            progress[book_id]["completed"] = completed
+            progress[book_id]["updated_at"] = datetime.now().isoformat()
+
+        save_progress(progress)
+        return {"completed": completed}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update completed status: {e}")
 
 
 # --- Highlights API ---
