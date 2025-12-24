@@ -476,6 +476,42 @@
             background: #b91c1c;
         }
 
+        /* Tag Suggestions Pills */
+        .tag-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        .tag-suggestions:empty {
+            display: none;
+        }
+        .tag-suggestions-label {
+            width: 100%;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        .tag-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+        .tag-pill:hover {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+
         /* Responsive */
         @media (max-width: 640px) {
             .container {
@@ -566,7 +602,7 @@
                                 <button class="book-delete-btn" onclick="event.preventDefault(); event.stopPropagation(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
                                     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
                                 </button>
-                                <input type="checkbox" class="book-completed-checkbox" title="Mark as completed" onclick="event.preventDefault(); toggleCompleted('{{ book.id }}', this)" {% if book.completed %}checked{% endif %}>
+                                <input type="checkbox" class="book-completed-checkbox" title="Mark as completed" onclick="event.preventDefault(); event.stopPropagation(); toggleCompleted('{{ book.id }}', this)" {% if book.completed %}checked{% endif %}>
                             </a>
                             {% endfor %}
                         </div>
@@ -596,7 +632,7 @@
                             <button class="book-delete-btn" onclick="event.preventDefault(); event.stopPropagation(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
                                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
                             </button>
-                            <input type="checkbox" class="book-completed-checkbox" title="Mark as completed" onclick="event.preventDefault(); toggleCompleted('{{ book.id }}', this)" {% if book.completed %}checked{% endif %}>
+                            <input type="checkbox" class="book-completed-checkbox" title="Mark as completed" onclick="event.preventDefault(); event.stopPropagation(); toggleCompleted('{{ book.id }}', this)" {% if book.completed %}checked{% endif %}>
                         </a>
                         {% endfor %}
                     </div>
@@ -625,7 +661,7 @@
                             <button class="book-delete-btn" onclick="event.preventDefault(); event.stopPropagation(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
                                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
                             </button>
-                            <input type="checkbox" class="book-completed-checkbox" title="Mark as not completed" onclick="event.preventDefault(); toggleCompleted('{{ book.id }}', this)" checked>
+                            <input type="checkbox" class="book-completed-checkbox" title="Mark as not completed" onclick="event.preventDefault(); event.stopPropagation(); toggleCompleted('{{ book.id }}', this)" checked>
                         </a>
                         {% endfor %}
                     </div>
@@ -711,10 +747,67 @@
         restoreCollapsedState();
 
         let currentBookId = null;
+        let allExistingTags = [];
+
+        // Fetch all existing tags on page load
+        async function loadExistingTags() {
+            try {
+                const res = await fetch(`{{ root_path }}/api/tags`);
+                if (res.ok) {
+                    const data = await res.json();
+                    allExistingTags = data.tags || [];
+                }
+            } catch (err) {
+                console.error('Failed to load tags:', err);
+            }
+        }
+        loadExistingTags();
+
+        function renderTagSuggestions(currentTags) {
+            const container = document.getElementById('tagSuggestions');
+            const currentTagList = currentTags.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
+
+            // Clear previous pills (keep the label)
+            container.innerHTML = '<span class="tag-suggestions-label">Existing tags:</span>';
+
+            // Filter out tags already in input
+            const suggestions = allExistingTags.filter(tag =>
+                !currentTagList.includes(tag.toLowerCase())
+            );
+
+            if (suggestions.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            suggestions.forEach(tag => {
+                const pill = document.createElement('button');
+                pill.type = 'button';
+                pill.className = 'tag-pill';
+                pill.textContent = tag;
+                pill.onclick = () => addTagFromPill(tag);
+                container.appendChild(pill);
+            });
+        }
+
+        function addTagFromPill(tag) {
+            const input = document.getElementById('tagInput');
+            const currentTags = input.value.split(',').map(t => t.trim()).filter(t => t);
+
+            if (!currentTags.map(t => t.toLowerCase()).includes(tag.toLowerCase())) {
+                currentTags.push(tag);
+                input.value = currentTags.join(', ');
+            }
+
+            renderTagSuggestions(input.value);
+            input.focus();
+        }
+
         function openTagEditor(bookId, currentTags, bookTitle) {
             currentBookId = bookId;
             document.getElementById('modalBookTitle').textContent = bookTitle;
             document.getElementById('tagInput').value = currentTags;
+            renderTagSuggestions(currentTags);
             document.getElementById('tagModal').classList.add('show');
             document.getElementById('tagInput').focus();
         }
@@ -735,6 +828,11 @@
         }
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTagEditor(); });
         document.getElementById('tagModal').addEventListener('click', (e) => { if (e.target.id === 'tagModal') closeTagEditor(); });
+
+        // Update suggestions as user types
+        document.getElementById('tagInput').addEventListener('input', (e) => {
+            renderTagSuggestions(e.target.value);
+        });
 
         async function toggleCompleted(bookId, checkbox) {
             const newCompleted = !checkbox.checked;
@@ -760,6 +858,9 @@
             <h2 class="modal-title">Edit Tags</h2>
             <p class="modal-subtitle" id="modalBookTitle"></p>
             <input type="text" id="tagInput" class="modal-input" placeholder="Enter tags separated by commas">
+            <div class="tag-suggestions" id="tagSuggestions">
+                <span class="tag-suggestions-label">Existing tags:</span>
+            </div>
             <div class="modal-actions">
                 <button class="modal-btn modal-btn-cancel" onclick="closeTagEditor()">Cancel</button>
                 <button class="modal-btn modal-btn-save" onclick="saveTags()">Save</button>
