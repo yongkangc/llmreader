@@ -318,6 +318,28 @@
             color: var(--text-primary);
         }
 
+        /* Delete Button */
+        .book-delete-btn {
+            background: transparent;
+            border: none;
+            padding: 6px;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-radius: var(--radius-sm);
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .book-delete-btn:hover {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .dark .book-delete-btn:hover {
+            background: #450a0a;
+            color: #f87171;
+        }
+
         /* Completed Checkbox */
         .book-completed-checkbox {
             width: 18px;
@@ -428,6 +450,32 @@
             background: var(--accent-hover);
         }
 
+        /* Delete Modal */
+        .delete-modal {
+            max-width: 400px;
+        }
+        .delete-warning {
+            color: var(--text-muted);
+            margin: 12px 0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .delete-list {
+            margin: 8px 0 16px 20px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .delete-list li {
+            margin: 4px 0;
+        }
+        .modal-btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+        .modal-btn-danger:hover {
+            background: #b91c1c;
+        }
+
         /* Responsive */
         @media (max-width: 640px) {
             .container {
@@ -515,6 +563,9 @@
                                     <span class="progress-text">{{ book.progress|int }}%</span>
                                 </div>
                                 <button class="book-tags-btn" onclick="event.preventDefault(); openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
+                                <button class="book-delete-btn" onclick="event.preventDefault(); event.stopPropagation(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
+                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+                                </button>
                                 <input type="checkbox" class="book-completed-checkbox" title="Mark as completed" onclick="event.preventDefault(); toggleCompleted('{{ book.id }}', this)" {% if book.completed %}checked{% endif %}>
                             </a>
                             {% endfor %}
@@ -542,6 +593,9 @@
                                 <span class="progress-text">{{ book.progress|int }}%</span>
                             </div>
                             <button class="book-tags-btn" onclick="event.preventDefault(); openTagEditor('{{ book.id }}', '', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
+                            <button class="book-delete-btn" onclick="event.preventDefault(); event.stopPropagation(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
+                                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+                            </button>
                             <input type="checkbox" class="book-completed-checkbox" title="Mark as completed" onclick="event.preventDefault(); toggleCompleted('{{ book.id }}', this)" {% if book.completed %}checked{% endif %}>
                         </a>
                         {% endfor %}
@@ -568,6 +622,9 @@
                                 <span class="progress-text">{{ book.progress|int }}%</span>
                             </div>
                             <button class="book-tags-btn" onclick="event.preventDefault(); openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
+                            <button class="book-delete-btn" onclick="event.preventDefault(); event.stopPropagation(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
+                                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+                            </button>
                             <input type="checkbox" class="book-completed-checkbox" title="Mark as not completed" onclick="event.preventDefault(); toggleCompleted('{{ book.id }}', this)" checked>
                         </a>
                         {% endfor %}
@@ -709,5 +766,76 @@
             </div>
         </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content delete-modal">
+            <h2 class="modal-title">Delete Book</h2>
+            <p class="modal-subtitle">Delete "<span id="deleteBookTitle"></span>"?</p>
+            <p class="delete-warning">
+                This will permanently remove the book and all associated data including:
+            </p>
+            <ul class="delete-list">
+                <li>Reading progress</li>
+                <li>Highlights and notes</li>
+                <li>Book files</li>
+            </ul>
+            <p class="delete-warning"><strong>This action cannot be undone.</strong></p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+                <button class="modal-btn modal-btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let deleteBookId = null;
+
+        function openDeleteModal(bookId, bookTitle) {
+            deleteBookId = bookId;
+            document.getElementById('deleteBookTitle').textContent = bookTitle;
+            document.getElementById('deleteModal').classList.add('show');
+        }
+
+        function closeDeleteModal() {
+            deleteBookId = null;
+            document.getElementById('deleteModal').classList.remove('show');
+        }
+
+        async function confirmDelete() {
+            if (!deleteBookId) return;
+
+            const deleteBtn = document.querySelector('.modal-btn-danger');
+            deleteBtn.textContent = 'Deleting...';
+            deleteBtn.disabled = true;
+
+            try {
+                const response = await fetch(`{{ root_path }}/api/books/${deleteBookId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    closeDeleteModal();
+                    window.location.reload();
+                } else {
+                    alert('Failed to delete book: ' + (result.detail || 'Unknown error'));
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.disabled = false;
+                }
+            } catch (error) {
+                alert('Failed to delete book. Please try again.');
+                console.error('Delete error:', error);
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.disabled = false;
+            }
+        }
+
+        // Close delete modal on backdrop click
+        document.getElementById('deleteModal').addEventListener('click', (e) => {
+            if (e.target.id === 'deleteModal') closeDeleteModal();
+        });
+    </script>
 </body>
 </html>

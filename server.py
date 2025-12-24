@@ -769,6 +769,44 @@ async def toggle_book_completed(book_id: str, request: Request):
         raise HTTPException(status_code=500, detail=f"Failed to update completed status: {e}")
 
 
+@app.delete("/api/books/{book_id}")
+async def delete_book(book_id: str):
+    """
+    Delete a book and all associated data.
+    Removes: book folder, highlights, reading progress.
+    """
+    # Sanitize book_id to prevent directory traversal
+    safe_book_id = os.path.basename(book_id)
+    book_path = os.path.join(BOOKS_DIR, safe_book_id)
+
+    # Verify book exists
+    if not os.path.isdir(book_path) or not safe_book_id.endswith("_data"):
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    try:
+        # Delete book folder (book.pkl + images/)
+        shutil.rmtree(book_path)
+
+        # Clean up highlights.json
+        highlights = load_highlights()
+        if safe_book_id in highlights:
+            del highlights[safe_book_id]
+            save_highlights(highlights)
+
+        # Clean up reading_progress.json
+        progress = load_progress()
+        if safe_book_id in progress:
+            del progress[safe_book_id]
+            save_progress(progress)
+
+        # Clear book cache
+        load_book_cached.cache_clear()
+
+        return {"success": True, "message": "Book deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete book: {e}")
+
+
 # --- Highlights API ---
 
 @app.get("/api/highlights")
