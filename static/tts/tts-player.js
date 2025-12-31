@@ -196,12 +196,18 @@ const TtsPlayer = {
         this.startProgressInterval();
 
         // Prepare word tracking (Chrome/Edge only)
-        if (TtsEngine.supportsWordTracking()) {
+        const supportsTracking = TtsEngine.supportsWordTracking();
+        console.log('Word tracking supported:', supportsTracking);
+        if (supportsTracking) {
             this.prepareWordTracking(segment);
+            console.log('Word spans created:', this.state.wordSpans.length);
         }
 
         // Set up boundary callback for word tracking
-        TtsEngine.onBoundary = (e) => this.onWordBoundary(e);
+        TtsEngine.onBoundary = (e) => {
+            console.log('Boundary event:', e.name, 'charIndex:', e.charIndex);
+            this.onWordBoundary(e);
+        };
 
         // Speak
         TtsEngine.speak(segment.text, {
