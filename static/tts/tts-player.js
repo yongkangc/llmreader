@@ -17,6 +17,7 @@ const TtsPlayer = {
         highlightText: true,    // Highlight current paragraph
         // Word tracking state
         wordTrackingEnabled: false,
+        wordTrackingElement: null,  // The actual element that has modified HTML
         currentSegmentText: '',
         wordSpans: [],
         segmentClickHandlers: [], // Store handlers for cleanup
@@ -71,6 +72,9 @@ const TtsPlayer = {
             // Set up engine callbacks
             TtsEngine.onEnd = () => this.onSegmentEnd();
             TtsEngine.onError = (e) => this.onError(e);
+
+            // Add play buttons to paragraphs
+            this.addPlayButtons();
         }).catch((err) => {
             console.error('TTS init failed:', err);
         });
@@ -196,18 +200,12 @@ const TtsPlayer = {
         this.startProgressInterval();
 
         // Prepare word tracking (Chrome/Edge only)
-        const supportsTracking = TtsEngine.supportsWordTracking();
-        console.log('Word tracking supported:', supportsTracking);
-        if (supportsTracking) {
+        if (TtsEngine.supportsWordTracking()) {
             this.prepareWordTracking(segment);
-            console.log('Word spans created:', this.state.wordSpans.length);
         }
 
         // Set up boundary callback for word tracking
-        TtsEngine.onBoundary = (e) => {
-            console.log('Boundary event:', e.name, 'charIndex:', e.charIndex);
-            this.onWordBoundary(e);
-        };
+        TtsEngine.onBoundary = (e) => this.onWordBoundary(e);
 
         // Speak
         TtsEngine.speak(segment.text, {
@@ -303,6 +301,7 @@ const TtsPlayer = {
         this.state.segments = [];
         this.state.currentIndex = 0;
         this.state.wordTrackingEnabled = false;
+        this.state.wordTrackingElement = null;
         this.state.wordSpans = [];
 
         // Update button
@@ -662,6 +661,163 @@ const TtsPlayer = {
         this.state.segmentClickHandlers = [];
     },
 
+    // ===== Hover Play Buttons =====
+
+    /**
+     * Add play buttons to all readable paragraphs
+     * Desktop: hover shows play button
+     * Mobile: double-tap to start TTS from paragraph
+     */
+    addPlayButtons: function() {
+        const content = document.getElementById('chapterContent');
+        if (!content) return;
+
+        const elements = content.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote, figcaption');
+        const skipSelectors = 'pre, code, script, style, nav, .highlight-toolbar, .highlight-popup';
+        const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+
+        elements.forEach((el) => {
+            // Skip if inside code block or other skip elements
+            if (this.isInsideSkipElement(el, skipSelectors)) return;
+
+            // Skip if nested inside another readable element
+            if (this.isNestedReadable(el)) return;
+
+            // Skip very short elements
+            const text = el.textContent.trim();
+            if (text.length < 3) return;
+
+            // Create play button (hidden on mobile via CSS)
+            const btn = document.createElement('button');
+            btn.className = 'tts-paragraph-play';
+            btn.innerHTML = '▶';
+            btn.title = 'Read from here';
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                this.startFromElement(el);
+            };
+
+            el.appendChild(btn);
+
+            // On mobile: tap to start TTS
+            if (isMobile) {
+                this.addMobileTapHandler(el);
+            }
+        });
+    },
+
+    /**
+     * Add tap handler for mobile - single tap starts TTS
+     */
+    addMobileTapHandler: function(element) {
+        const self = this;
+
+        element.addEventListener('click', function(e) {
+            // Don't trigger if selecting text
+            if (window.getSelection().toString().length > 0) {
+                return;
+            }
+
+            // Don't trigger on links or buttons
+            if (e.target.tagName === 'A' || e.target.closest('a')) {
+                return;
+            }
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+                return;
+            }
+
+            self.startFromElement(element);
+        });
+    },
+
+    /**
+     * Check if element is inside a skip element (like code blocks)
+     */
+    isInsideSkipElement: function(element, skipSelectors) {
+        let parent = element.parentElement;
+        while (parent && parent.id !== 'chapterContent') {
+            if (parent.matches && parent.matches(skipSelectors)) {
+                return true;
+            }
+            if (parent.tagName === 'PRE' || parent.tagName === 'CODE') {
+                return true;
+            }
+            parent = parent.parentElement;
+        }
+        return false;
+    },
+
+    /**
+     * Check if element is nested inside another readable element
+     */
+    isNestedReadable: function(element) {
+        const readableSelectors = 'p, h1, h2, h3, h4, h5, h6, li, blockquote';
+        let parent = element.parentElement;
+        while (parent && parent.id !== 'chapterContent') {
+            if (parent.matches && parent.matches(readableSelectors)) {
+                return true;
+            }
+            parent = parent.parentElement;
+        }
+        return false;
+    },
+
+    /**
+     * Start TTS from a specific element (clicked via hover play button)
+     */
+    startFromElement: function(element) {
+        // If TTS is not active, we need to start it first
+        if (!this.state.isActive) {
+            // Segment content first
+            const content = document.getElementById('chapterContent');
+            if (!content) return;
+
+            this.state.segments = TtsSegmenter.segmentContent(content);
+            if (this.state.segments.length === 0) return;
+
+            // Find the segment index for this element
+            // First try exact match
+            let index = this.state.segments.findIndex(s => s.element === element);
+
+            // If not found, try finding a segment that contains this element or is contained by it
+            if (index < 0) {
+                index = this.state.segments.findIndex(s =>
+                    s.element.contains(element) || element.contains(s.element)
+                );
+            }
+
+            // If still not found, start from the beginning
+            if (index < 0) {
+                index = 0;
+            }
+
+            this.state.currentIndex = index;
+
+            // Add click handlers for jumping between segments
+            this.addSegmentClickHandlers();
+
+            // Show player and start
+            this.showPlayer();
+            this.state.isActive = true;
+            this.play();
+        } else {
+            // TTS is already active, just jump to this segment
+            let index = this.state.segments.findIndex(s => s.element === element);
+
+            // Try contains check if exact match fails
+            if (index < 0) {
+                index = this.state.segments.findIndex(s =>
+                    s.element.contains(element) || element.contains(s.element)
+                );
+            }
+
+            if (index >= 0) {
+                this.playFromSegment(index);
+            }
+        }
+    },
+
     // ===== Word Tracking (Chrome/Edge only) =====
 
     /**
@@ -691,6 +847,7 @@ const TtsPlayer = {
         segment.element.innerHTML = html;
         this.state.wordSpans = Array.from(segment.element.querySelectorAll('.tts-word'));
         this.state.wordTrackingEnabled = true;
+        this.state.wordTrackingElement = segment.element;  // Store the actual element reference
     },
 
     /**
@@ -751,11 +908,13 @@ const TtsPlayer = {
      * Restore segment HTML after word tracking
      */
     restoreSegmentHtml: function() {
-        const segment = this.state.segments[this.state.currentIndex];
-        if (segment && segment.element && this.state.currentSegmentText) {
-            segment.element.innerHTML = this.state.currentSegmentText;
+        // Use the saved element reference directly
+        const element = this.state.wordTrackingElement;
+        if (element && this.state.currentSegmentText) {
+            element.innerHTML = this.state.currentSegmentText;
         }
         this.state.wordTrackingEnabled = false;
+        this.state.wordTrackingElement = null;
         this.state.wordSpans = [];
         this.state.currentSegmentText = '';
     },

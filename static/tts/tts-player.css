@@ -377,6 +377,69 @@ body.dark-mode.tts-active #chapterContent .tts-current:hover {
     background: rgba(125, 184, 245, 0.08);
 }
 
+/* ===== Paragraph Play Button (Hover to Start TTS) ===== */
+#chapterContent p,
+#chapterContent h1,
+#chapterContent h2,
+#chapterContent h3,
+#chapterContent h4,
+#chapterContent h5,
+#chapterContent h6,
+#chapterContent li,
+#chapterContent blockquote {
+    position: relative;
+}
+
+.tts-paragraph-play {
+    position: absolute;
+    left: -32px;
+    top: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    color: white;
+    border: none;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    padding: 0;
+    z-index: 10;
+}
+
+.tts-paragraph-play:hover {
+    transform: scale(1.1);
+    filter: brightness(1.1);
+}
+
+.tts-paragraph-play:active {
+    transform: scale(0.95);
+}
+
+/* Show play button on paragraph hover */
+#chapterContent p:hover > .tts-paragraph-play,
+#chapterContent h1:hover > .tts-paragraph-play,
+#chapterContent h2:hover > .tts-paragraph-play,
+#chapterContent h3:hover > .tts-paragraph-play,
+#chapterContent h4:hover > .tts-paragraph-play,
+#chapterContent h5:hover > .tts-paragraph-play,
+#chapterContent h6:hover > .tts-paragraph-play,
+#chapterContent li:hover > .tts-paragraph-play,
+#chapterContent blockquote:hover > .tts-paragraph-play {
+    opacity: 1;
+}
+
+/* Hide play buttons on mobile (touch devices) - they can tap to play instead */
+@media (max-width: 768px) {
+    .tts-paragraph-play {
+        display: none;
+    }
+}
+
 /* ===== Mobile Responsive ===== */
 @media (max-width: 768px) {
     .tts-player {
