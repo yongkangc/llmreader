@@ -620,12 +620,12 @@
                                     <div class="progress-track"><div class="progress-fill" style="width: {{ book.progress }}%"></div></div>
                                     <span class="progress-text">{{ book.progress|int }}%</span>
                                 </div>
-                                <div class="book-actions">
-                                    <button class="book-tags-btn" onclick="event.preventDefault(); openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
-                                    <button class="book-delete-btn" onclick="event.preventDefault(); event.stopPropagation(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
+                                <div class="book-actions" onclick="event.preventDefault(); event.stopPropagation();">
+                                    <button class="book-tags-btn" onclick="openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
+                                    <button class="book-delete-btn" onclick="openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
                                         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
                                     </button>
-                                    <input type="checkbox" class="book-completed-checkbox" title="Mark as completed" onclick="event.preventDefault(); event.stopPropagation(); toggleCompleted('{{ book.id }}', this)" {% if book.completed %}checked{% endif %}>
+                                    <input type="checkbox" class="book-completed-checkbox" title="Mark as completed" onclick="toggleCompleted('{{ book.id }}', this)" {% if book.completed %}checked{% endif %}>
                                 </div>
                             </a>
                             {% endfor %}
@@ -652,12 +652,12 @@
                                 <div class="progress-track"><div class="progress-fill" style="width: {{ book.progress }}%"></div></div>
                                 <span class="progress-text">{{ book.progress|int }}%</span>
                             </div>
-                            <div class="book-actions">
-                                <button class="book-tags-btn" onclick="event.preventDefault(); openTagEditor('{{ book.id }}', '', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
-                                <button class="book-delete-btn" onclick="event.preventDefault(); event.stopPropagation(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
+                            <div class="book-actions" onclick="event.preventDefault(); event.stopPropagation();">
+                                <button class="book-tags-btn" onclick="openTagEditor('{{ book.id }}', '', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
+                                <button class="book-delete-btn" onclick="openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
                                     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
                                 </button>
-                                <input type="checkbox" class="book-completed-checkbox" title="Mark as completed" onclick="event.preventDefault(); event.stopPropagation(); toggleCompleted('{{ book.id }}', this)" {% if book.completed %}checked{% endif %}>
+                                <input type="checkbox" class="book-completed-checkbox" title="Mark as completed" onclick="toggleCompleted('{{ book.id }}', this)" {% if book.completed %}checked{% endif %}>
                             </div>
                         </a>
                         {% endfor %}
@@ -683,12 +683,12 @@
                                 <div class="progress-track"><div class="progress-fill" style="width: {{ book.progress }}%"></div></div>
                                 <span class="progress-text">{{ book.progress|int }}%</span>
                             </div>
-                            <div class="book-actions">
-                                <button class="book-tags-btn" onclick="event.preventDefault(); openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
-                                <button class="book-delete-btn" onclick="event.preventDefault(); event.stopPropagation(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
+                            <div class="book-actions" onclick="event.preventDefault(); event.stopPropagation();">
+                                <button class="book-tags-btn" onclick="openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
+                                <button class="book-delete-btn" onclick="openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
                                     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
                                 </button>
-                                <input type="checkbox" class="book-completed-checkbox" title="Mark as not completed" onclick="event.preventDefault(); event.stopPropagation(); toggleCompleted('{{ book.id }}', this)" checked>
+                                <input type="checkbox" class="book-completed-checkbox" title="Mark as not completed" onclick="toggleCompleted('{{ book.id }}', this)" checked>
                             </div>
                         </a>
                         {% endfor %}

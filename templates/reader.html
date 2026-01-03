@@ -1095,11 +1095,21 @@
                 const isOpen = body.classList.toggle('sidebar-open');
                 localStorage.setItem('sidebar', isOpen ? 'open' : 'closed');
                 updateSidebarIcon(!isOpen); // Icon shows opposite state
+
+                // Scroll to active chapter when opening sidebar
+                if (isOpen) {
+                    setTimeout(scrollSidebarToActive, 100);
+                }
             } else {
                 // On desktop, toggle sidebar-collapsed class
                 const isCollapsed = body.classList.toggle('sidebar-collapsed');
                 localStorage.setItem('sidebar', isCollapsed ? 'closed' : 'open');
                 updateSidebarIcon(isCollapsed);
+
+                // Scroll to active chapter when opening sidebar
+                if (!isCollapsed) {
+                    setTimeout(scrollSidebarToActive, 100);
+                }
             }
         }
 
