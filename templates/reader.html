@@ -891,6 +891,8 @@
 
             // Find and activate the matching TOC link
             let matchFound = false;
+            let firstChapterLink = null; // First link matching the chapter file (fallback)
+
             document.querySelectorAll('.toc-link').forEach(link => {
                 const onclick = link.getAttribute('onclick');
                 if (onclick) {
@@ -898,14 +900,28 @@
                     const match = onclick.match(/findAndGo\('([^']+)'\)/);
                     if (match) {
                         const linkHref = match[1];
+                        const linkBaseFile = linkHref.split('#')[0];
+
+                        // Exact match (including anchor)
                         if (linkHref === targetHref) {
-                            console.log('MATCH FOUND:', linkHref, link.textContent.trim().substring(0, 50));
+                            console.log('EXACT MATCH:', linkHref);
                             link.classList.add('active');
                             matchFound = true;
+                        }
+                        // Track first link for this chapter file (fallback)
+                        else if (linkBaseFile === currentChapterFile && !firstChapterLink) {
+                            firstChapterLink = link;
                         }
                     }
                 }
             });
+
+            // Fallback: if no exact match, highlight the first TOC entry for this chapter
+            if (!matchFound && firstChapterLink) {
+                console.log('FALLBACK MATCH:', firstChapterLink.textContent.trim().substring(0, 50));
+                firstChapterLink.classList.add('active');
+                matchFound = true;
+            }
 
             if (!matchFound) {
                 console.log('WARNING: No matching TOC link found for', targetHref);
