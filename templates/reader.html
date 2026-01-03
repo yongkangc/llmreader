@@ -313,42 +313,55 @@
         /* Highlight Popup Menu */
         .highlight-popup {
             position: absolute;
-            background: var(--bg-button);
+            background: var(--bg-main);
             border: 1px solid var(--border-medium);
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
             padding: 4px;
             z-index: 1000;
             display: none;
-            font-family: -apple-system, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
         }
         .highlight-popup.show {
             display: flex;
-            flex-direction: column;
-            gap: 4px;
+            flex-direction: row;
+            gap: 2px;
         }
         .highlight-popup button {
             background: transparent;
-            color: var(--text-primary);
+            color: var(--text-secondary);
             border: none;
-            padding: 8px 12px;
-            text-align: left;
+            padding: 6px 10px;
             cursor: pointer;
-            font-size: 0.9em;
+            font-size: 0.8em;
+            font-weight: 500;
             border-radius: 4px;
             display: flex;
             align-items: center;
-            gap: 8px;
-            transition: background 0.2s;
+            gap: 5px;
+            transition: all 0.15s ease;
             white-space: nowrap;
         }
         .highlight-popup button:hover {
             background: var(--bg-button-hover);
+            color: var(--text-primary);
+        }
+        .highlight-popup button.danger:hover {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+        .highlight-popup button svg {
+            width: 14px;
+            height: 14px;
+            opacity: 0.7;
+        }
+        .highlight-popup button:hover svg {
+            opacity: 1;
         }
         .highlight-popup .divider {
-            height: 1px;
+            width: 1px;
             background: var(--border-light);
-            margin: 4px 0;
+            margin: 4px 2px;
         }
 
         /* Note Tooltip on Hover */
@@ -373,38 +386,52 @@
             display: block;
         }
 
-        /* Note Editor in Popup */
+        /* Note Editor - Floating Panel */
         .note-editor {
-            padding: 8px;
+            position: absolute;
+            background: var(--bg-main);
+            border: 1px solid var(--border-medium);
+            border-radius: 6px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+            padding: 12px;
+            z-index: 1001;
             display: none;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
         }
         .note-editor.show {
             display: block;
         }
         .note-editor textarea {
-            width: 250px;
-            min-height: 60px;
-            padding: 8px;
+            width: 240px;
+            min-height: 80px;
+            padding: 10px;
             border: 1px solid var(--border-medium);
             border-radius: 4px;
             font-family: -apple-system, sans-serif;
-            font-size: 0.9em;
-            background: var(--bg-main);
+            font-size: 0.85em;
+            background: var(--bg-button);
             color: var(--text-primary);
             resize: vertical;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .note-editor textarea:focus {
+            border-color: var(--accent-primary);
         }
         .note-editor button {
             margin-top: 8px;
-            padding: 6px 12px;
-            background: var(--accent-primary);
-            color: white;
+            padding: 6px 16px;
+            background: var(--text-primary);
+            color: var(--bg-main);
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 0.85em;
+            font-size: 0.8em;
+            font-weight: 500;
+            transition: opacity 0.2s;
         }
         .note-editor button:hover {
-            background: var(--accent-success);
+            opacity: 0.85;
         }
 
         /* Font Settings */
@@ -690,19 +717,24 @@
             <!-- Highlight Popup Menu -->
             <div class="highlight-popup" id="highlightPopup">
                 <button onclick="copyHighlightText()">
-                    <span>📋</span> Copy
-                </button>
-                <button onclick="toggleNoteEditor()">
-                    <span>📝</span> <span id="noteButtonLabel">Add Note</span>
+                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z"/></svg>
+                    Copy
                 </button>
                 <div class="divider"></div>
-                <button onclick="removeHighlight()" style="color: #dc3545;">
-                    <span>🗑️</span> Remove
+                <button onclick="toggleNoteEditor()">
+                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>
+                    <span id="noteButtonLabel">Note</span>
                 </button>
-                <div class="note-editor" id="noteEditor">
-                    <textarea id="noteInput" placeholder="Add your note here..."></textarea>
-                    <button onclick="saveNote()">Save Note</button>
-                </div>
+                <div class="divider"></div>
+                <button class="danger" onclick="removeHighlight()">
+                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+                    Remove
+                </button>
+            </div>
+            <!-- Note Editor (separate from popup) -->
+            <div class="note-editor" id="noteEditor">
+                <textarea id="noteInput" placeholder="Add your note..."></textarea>
+                <button onclick="saveNote()">Save</button>
             </div>
 
             <!-- Note Tooltip for Hover -->
@@ -1700,7 +1732,7 @@
 
             // Update note button label
             const noteLabel = document.getElementById('noteButtonLabel');
-            noteLabel.textContent = highlight.note ? 'Edit Note' : 'Add Note';
+            noteLabel.textContent = highlight.note ? 'Edit' : 'Note';
 
             // Position popup
             const popup = document.getElementById('highlightPopup');
@@ -1756,7 +1788,6 @@
             if (!highlight) return;
 
             navigator.clipboard.writeText(highlight.text).then(() => {
-                alert('Copied to clipboard!');
                 hideHighlightPopup();
             }).catch(err => {
                 console.error('Failed to copy:', err);
@@ -1767,10 +1798,18 @@
         function toggleNoteEditor() {
             const editor = document.getElementById('noteEditor');
             const input = document.getElementById('noteInput');
+            const popup = document.getElementById('highlightPopup');
 
             if (editor.classList.contains('show')) {
                 editor.classList.remove('show');
             } else {
+                // Position editor below the popup
+                const popupRect = popup.getBoundingClientRect();
+                const containerRect = document.querySelector('.content-container').getBoundingClientRect();
+
+                editor.style.top = `${popupRect.bottom - containerRect.top + 4}px`;
+                editor.style.left = `${popupRect.left - containerRect.left}px`;
+
                 // Load existing note
                 const highlight = loadedHighlights.find(h => h.id === currentHighlightId);
                 input.value = highlight?.note || '';
@@ -1811,12 +1850,11 @@
                         }
                     }
 
-                    alert('Note saved!');
+                    document.getElementById('noteEditor').classList.remove('show');
                     hideHighlightPopup();
                 }
             } catch (error) {
                 console.error('Failed to save note:', error);
-                alert('Failed to save note. Please try again.');
             }
         }
 
