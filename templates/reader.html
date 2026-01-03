@@ -78,9 +78,18 @@
         ul.toc-list { list-style: none; padding-left: 0; margin: 0; }
         ul.toc-list ul { padding-left: 20px; } /* Indent children */
         li.toc-item { margin-bottom: 8px; }
-        a.toc-link { text-decoration: none; color: var(--text-secondary); font-size: 0.95em; display: block; padding: 4px 0; line-height: 1.4; transition: color 0.3s; }
-        a.toc-link:hover { color: var(--text-primary); text-decoration: underline; }
-        a.toc-link.active { color: var(--accent-active); font-weight: bold; }
+        a.toc-link { text-decoration: none; color: var(--text-secondary); font-size: 0.95em; display: block; padding: 4px 8px; margin: 0 -8px; line-height: 1.4; transition: all 0.2s; border-radius: 4px; }
+        a.toc-link:hover { color: var(--text-primary); background: var(--bg-button-hover); }
+        /* Active chapter - highlighted background */
+        a.toc-link.active {
+            color: #dc2626;
+            font-weight: bold;
+            background: rgba(220, 38, 38, 0.1);
+        }
+        body.dark-mode a.toc-link.active {
+            color: #f87171;
+            background: rgba(248, 113, 113, 0.15);
+        }
 
         /* Main Content */
         #main { flex-grow: 1; overflow-y: auto; position: relative; scroll-behavior: smooth; background: var(--bg-main); transition: background-color 0.3s; }
