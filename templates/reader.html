@@ -1233,6 +1233,49 @@
             }
         });
 
+        // Keyboard navigation: Arrow keys for chapter navigation and scrolling
+        document.addEventListener('keydown', function(e) {
+            // Ignore if user is typing in an input field or textarea
+            const activeEl = document.activeElement;
+            if (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            const mainContainer = document.getElementById('main');
+            const scrollAmount = window.innerHeight * 0.8; // Scroll 80% of viewport height
+
+            switch (e.key) {
+                case 'ArrowLeft':
+                    // Navigate to previous chapter
+                    {% if prev_idx is not none %}
+                    e.preventDefault();
+                    window.location.href = "{{ root_path }}/read/{{ book_id }}/{{ prev_idx }}";
+                    {% endif %}
+                    break;
+                case 'ArrowRight':
+                    // Navigate to next chapter
+                    {% if next_idx is not none %}
+                    e.preventDefault();
+                    window.location.href = "{{ root_path }}/read/{{ book_id }}/{{ next_idx }}";
+                    {% endif %}
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    mainContainer.scrollBy({
+                        top: -scrollAmount,
+                        behavior: 'smooth'
+                    });
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    mainContainer.scrollBy({
+                        top: scrollAmount,
+                        behavior: 'smooth'
+                    });
+                    break;
+            }
+        });
+
         // ===== HIGHLIGHTING SYSTEM =====
 
         const bookId = "{{ book_id }}";
