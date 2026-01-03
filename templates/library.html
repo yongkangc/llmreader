@@ -863,7 +863,8 @@
         });
 
         async function toggleCompleted(bookId, checkbox) {
-            const newCompleted = !checkbox.checked;
+            // checkbox.checked already reflects the new state after user clicked
+            const newCompleted = checkbox.checked;
             try {
                 const res = await fetch(`{{ root_path }}/api/books/${bookId}/completed`, {
                     method: 'PUT',
