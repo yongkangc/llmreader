@@ -234,35 +234,65 @@
             background-repeat: no-repeat;
         }
 
-        /* Floating Highlight Toolbar */
-        .highlight-toolbar {
+        /* Undo Toast for Instant Highlight */
+        .highlight-undo-toast {
             position: absolute;
             background: var(--bg-button);
             border: 1px solid var(--border-medium);
-            border-radius: 6px;
+            border-radius: 8px;
             padding: 8px 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             z-index: 1000;
             display: none;
             font-family: -apple-system, sans-serif;
+            font-size: 0.85em;
+            color: var(--text-primary);
+            align-items: center;
+            gap: 12px;
+            animation: toast-fade-in 0.2s ease-out;
         }
-        .highlight-toolbar.show {
-            display: block;
+        .highlight-undo-toast.show {
+            display: flex;
         }
-        .highlight-toolbar button {
-            background: var(--accent-primary);
-            color: white;
+        .highlight-undo-toast span {
+            color: var(--text-secondary);
+        }
+        .highlight-undo-toast button {
+            background: transparent;
+            color: var(--accent-primary);
             border: none;
-            padding: 6px 12px;
+            padding: 4px 8px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.9em;
-            font-weight: 500;
-            transition: all 0.3s;
+            font-weight: 600;
+            transition: all 0.2s;
         }
-        .highlight-toolbar button:hover {
-            background: var(--accent-success);
-            transform: scale(1.05);
+        .highlight-undo-toast button:hover {
+            background: var(--bg-button-hover);
+        }
+        @keyframes toast-fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .highlight-undo-toast.fade-out {
+            animation: toast-fade-out 0.2s ease-in forwards;
+        }
+        @keyframes toast-fade-out {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(8px);
+            }
         }
 
         /* Highlight Popup Menu */
@@ -636,9 +666,10 @@
                 {% endif %}
             </div>
 
-            <!-- Floating Highlight Toolbar -->
-            <div class="highlight-toolbar" id="highlightToolbar">
-                <button onclick="createHighlight()">✨ Highlight</button>
+            <!-- Undo Toast for Instant Highlight -->
+            <div class="highlight-undo-toast" id="highlightUndoToast">
+                <span>Highlighted</span>
+                <button onclick="undoLastHighlight()">Undo</button>
             </div>
 
             <!-- Highlight Popup Menu -->
@@ -1340,55 +1371,188 @@
             return found;
         }
 
-        // Text selection detection
-        // Listen for both mouse and touch events for text selection
+        // Text selection detection - Instant highlight on selection
         const chapterContent = document.getElementById('chapterContent');
-        chapterContent.addEventListener('mouseup', handleTextSelection);
+        let lastHighlightId = null;
+        let undoToastTimeout = null;
 
-        // On mobile, use selectionchange with debouncing
-        let selectionTimeout;
-        document.addEventListener('selectionchange', () => {
-            clearTimeout(selectionTimeout);
-            selectionTimeout = setTimeout(() => {
-                const selection = window.getSelection();
-                if (selection.toString().trim().length > 0) {
-                    // Check if the selection is within our chapter content
-                    const range = selection.getRangeAt(0);
-                    if (chapterContent.contains(range.commonAncestorContainer)) {
-                        handleTextSelection();
-                    }
-                }
-            }, 300); // Wait 300ms after selection changes stop
+        // Create highlight when selection changes and user releases
+        document.addEventListener('mouseup', handleSelectionEnd);
+        document.addEventListener('touchend', (e) => {
+            // Delay for mobile to let selection finalize
+            setTimeout(() => handleSelectionEnd(e), 150);
         });
 
-        function handleTextSelection(e) {
+        function handleSelectionEnd(e) {
             const selection = window.getSelection();
             const selectedText = selection.toString().trim();
 
-            if (selectedText.length > 0) {
-                currentSelection = {
-                    text: selectedText,
-                    range: selection.getRangeAt(0).cloneRange()
-                };
+            // Need at least 3 characters to highlight
+            if (selectedText.length < 3) return;
 
-                // Show highlight button near selection
-                const rect = selection.getRangeAt(0).getBoundingClientRect();
-                const toolbar = document.getElementById('highlightToolbar');
-                const containerRect = document.querySelector('.content-container').getBoundingClientRect();
+            // Don't highlight if clicking on existing highlight or popup
+            if (e && e.target && (e.target.closest('.highlight') || e.target.closest('.highlight-popup') || e.target.closest('.highlight-undo-toast'))) {
+                return;
+            }
 
-                // Position relative to the content-container
-                // Both rect and containerRect are viewport-relative, so their difference
-                // gives us the position within the container (which is the toolbar's offsetParent)
-                toolbar.style.top = `${rect.bottom - containerRect.top + 5}px`;
-                toolbar.style.left = `${rect.left - containerRect.left}px`;
-                toolbar.classList.add('show');
-            } else {
-                hideHighlightToolbar();
+            // Check if selection is within chapter content
+            if (!selection.rangeCount) return;
+            const range = selection.getRangeAt(0);
+            if (!chapterContent.contains(range.commonAncestorContainer)) return;
+
+            currentSelection = {
+                text: selectedText,
+                range: range.cloneRange()
+            };
+
+            // Get selection rect before we modify anything
+            const rect = range.getBoundingClientRect();
+
+            // Create highlight instantly
+            createHighlightInstant(rect);
+        }
+
+        // Create highlight and show undo toast above selection
+        async function createHighlightInstant(selectionRect) {
+            if (!currentSelection) return;
+
+            // Calculate the actual offset in the content
+            const startOffset = calculateOffset(currentSelection.range);
+
+            const highlightData = {
+                text: currentSelection.text,
+                chapter_index: chapterIndex,
+                chapter_href: chapterHref,
+                start_offset: startOffset,
+                end_offset: startOffset + currentSelection.text.length,
+                color: "yellow"
+            };
+
+            try {
+                const response = await fetch(`{{ root_path }}/api/books/${bookId}/highlights`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(highlightData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Apply highlight to DOM
+                    try {
+                        const range = currentSelection.range;
+                        const mark = document.createElement('mark');
+                        mark.className = 'highlight';
+                        mark.dataset.highlightId = result.highlight.id;
+                        mark.dataset.note = '';
+
+                        try {
+                            range.surroundContents(mark);
+                        } catch (e) {
+                            const fragment = range.extractContents();
+                            mark.appendChild(fragment);
+                            range.insertNode(mark);
+                        }
+
+                        mark.addEventListener('click', (e) => showHighlightPopup(e, result.highlight.id));
+                        mark.addEventListener('mouseenter', (e) => showNoteTooltip(e, result.highlight.id));
+                        mark.addEventListener('mouseleave', hideNoteTooltip);
+
+                        // Add to loaded highlights
+                        loadedHighlights.push(result.highlight);
+
+                        // Store for undo
+                        lastHighlightId = result.highlight.id;
+
+                        // Show undo toast above where the selection was
+                        showUndoToast(selectionRect);
+
+                    } catch (e) {
+                        console.error('Failed to apply highlight:', e);
+                    }
+
+                    // Clear selection
+                    window.getSelection().removeAllRanges();
+                }
+            } catch (error) {
+                console.error('Failed to create highlight:', error);
             }
         }
 
-        function hideHighlightToolbar() {
-            document.getElementById('highlightToolbar').classList.remove('show');
+        function showUndoToast(selectionRect) {
+            const toast = document.getElementById('highlightUndoToast');
+            const containerRect = document.querySelector('.content-container').getBoundingClientRect();
+
+            // Position above the selection
+            toast.classList.remove('fade-out');
+            toast.classList.add('show');
+
+            // Get toast dimensions after showing
+            const toastRect = toast.getBoundingClientRect();
+
+            // Calculate position: above the selection, centered horizontally
+            let top = selectionRect.top - containerRect.top - toastRect.height - 8;
+            let left = selectionRect.left - containerRect.left + (selectionRect.width / 2) - (toastRect.width / 2);
+
+            // Keep within container bounds
+            left = Math.max(0, Math.min(left, containerRect.width - toastRect.width));
+
+            // If would go above viewport, show below instead
+            if (top < -containerRect.top + 10) {
+                top = selectionRect.bottom - containerRect.top + 8;
+            }
+
+            toast.style.top = `${top}px`;
+            toast.style.left = `${left}px`;
+
+            // Auto-hide after 4 seconds
+            clearTimeout(undoToastTimeout);
+            undoToastTimeout = setTimeout(() => {
+                hideUndoToast();
+            }, 4000);
+        }
+
+        function hideUndoToast() {
+            const toast = document.getElementById('highlightUndoToast');
+            toast.classList.add('fade-out');
+            setTimeout(() => {
+                toast.classList.remove('show', 'fade-out');
+            }, 200);
+            clearTimeout(undoToastTimeout);
+        }
+
+        async function undoLastHighlight() {
+            if (!lastHighlightId) return;
+
+            try {
+                const response = await fetch(`{{ root_path }}/api/highlights/${lastHighlightId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Remove from DOM
+                    const mark = document.querySelector(`[data-highlight-id="${lastHighlightId}"]`);
+                    if (mark) {
+                        const parent = mark.parentNode;
+                        while (mark.firstChild) {
+                            parent.insertBefore(mark.firstChild, mark);
+                        }
+                        parent.removeChild(mark);
+                        // Normalize to merge adjacent text nodes
+                        parent.normalize();
+                    }
+
+                    // Remove from cache
+                    loadedHighlights = loadedHighlights.filter(h => h.id !== lastHighlightId);
+                    lastHighlightId = null;
+
+                    hideUndoToast();
+                }
+            } catch (error) {
+                console.error('Failed to undo highlight:', error);
+            }
         }
 
         // Calculate offset of a range in the content
@@ -1414,73 +1578,6 @@
             }
 
             return found ? offset : 0;
-        }
-
-        // Create a new highlight
-        async function createHighlight() {
-            if (!currentSelection) return;
-
-            // Calculate the actual offset in the content
-            const startOffset = calculateOffset(currentSelection.range);
-
-            const highlightData = {
-                text: currentSelection.text,
-                chapter_index: chapterIndex,
-                chapter_href: chapterHref,
-                start_offset: startOffset,
-                end_offset: startOffset + currentSelection.text.length,
-                color: "yellow"
-            };
-
-            try {
-                const response = await fetch(`{{ root_path }}/api/books/${bookId}/highlights`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(highlightData)
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    // Apply highlight to DOM using more robust method
-                    try {
-                        const range = currentSelection.range;
-                        const mark = document.createElement('mark');
-                        mark.className = 'highlight';
-                        mark.dataset.highlightId = result.highlight.id;
-                        mark.dataset.note = '';
-
-                        // Try simple surroundContents first (works for single-element selections)
-                        try {
-                            range.surroundContents(mark);
-                            mark.addEventListener('click', (e) => showHighlightPopup(e, result.highlight.id));
-                            mark.addEventListener('mouseenter', (e) => showNoteTooltip(e, result.highlight.id));
-                            mark.addEventListener('mouseleave', hideNoteTooltip);
-                        } catch (e) {
-                            // If that fails (selection crosses elements), use extractContents + appendChild
-                            const fragment = range.extractContents();
-                            mark.appendChild(fragment);
-                            range.insertNode(mark);
-                            mark.addEventListener('click', (e) => showHighlightPopup(e, result.highlight.id));
-                            mark.addEventListener('mouseenter', (e) => showNoteTooltip(e, result.highlight.id));
-                            mark.addEventListener('mouseleave', hideNoteTooltip);
-                        }
-
-                        // Add to loaded highlights
-                        loadedHighlights.push(result.highlight);
-                    } catch (e) {
-                        console.error('Failed to apply highlight:', e);
-                        alert('Failed to apply highlight. Please try selecting within a single paragraph.');
-                    }
-
-                    // Clear selection
-                    window.getSelection().removeAllRanges();
-                    hideHighlightToolbar();
-                }
-            } catch (error) {
-                console.error('Failed to create highlight:', error);
-                alert('Failed to create highlight. Please try again.');
-            }
         }
 
         // Show popup menu for existing highlight
@@ -1653,9 +1750,8 @@
             if (!e.target.closest('.highlight-popup') && !e.target.closest('.highlight')) {
                 hideHighlightPopup();
             }
-            if (!e.target.closest('.highlight-toolbar') && !e.target.closest('#chapterContent')) {
-                hideHighlightToolbar();
-            }
+            // Don't hide undo toast here - it has its own auto-hide timer
+            // and we don't want to interfere with the highlight creation flow
 
             // Close/collapse sidebar when clicking on main content area
             const isMobile = window.innerWidth <= 768;

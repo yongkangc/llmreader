@@ -297,16 +297,16 @@ body.tts-active #main {
 
 /* ===== Current Paragraph Highlight ===== */
 .tts-current {
-    background: rgba(52, 152, 219, 0.1);
+    background: rgba(52, 152, 219, 0.08);
     border-left: 3px solid var(--accent-primary);
     margin-left: -15px;
     padding-left: 12px;
     border-radius: 0 4px 4px 0;
-    transition: all 0.3s ease;
+    transition: background 0.2s ease-out, border-color 0.2s ease-out;
 }
 
 body.dark-mode .tts-current {
-    background: rgba(125, 184, 245, 0.08);
+    background: rgba(125, 184, 245, 0.06);
 }
 
 /* Ensure TTS highlight doesn't conflict with user highlights */
@@ -316,29 +316,29 @@ body.dark-mode .tts-current {
 
 /* ===== Word-level Highlighting (Karaoke) ===== */
 .tts-word {
-    transition: background 0.15s ease, color 0.15s ease;
+    transition: background 0.1s ease-out, color 0.1s ease-out;
     border-radius: 2px;
+    padding: 0 1px;
+    margin: 0 -1px;
 }
 
-/* Already spoken words - light blue */
+/* Already spoken words - subtle underline style */
 .tts-word-spoken {
-    background: rgba(52, 152, 219, 0.2);
+    background: rgba(52, 152, 219, 0.12);
 }
 
-/* Current word being spoken - darker blue */
+/* Current word being spoken - clear highlight */
 .tts-word-current {
-    background: rgba(52, 152, 219, 0.5);
-    padding: 0 2px;
-    margin: 0 -2px;
+    background: rgba(52, 152, 219, 0.35);
     color: #1a5276;
 }
 
 body.dark-mode .tts-word-spoken {
-    background: rgba(125, 184, 245, 0.15);
+    background: rgba(125, 184, 245, 0.1);
 }
 
 body.dark-mode .tts-word-current {
-    background: rgba(125, 184, 245, 0.4);
+    background: rgba(125, 184, 245, 0.3);
     color: #d4e6f1;
 }
 
@@ -375,69 +375,6 @@ body.tts-active #chapterContent .tts-current:hover {
 
 body.dark-mode.tts-active #chapterContent .tts-current:hover {
     background: rgba(125, 184, 245, 0.08);
-}
-
-/* ===== Paragraph Play Button (Hover to Start TTS) ===== */
-#chapterContent p,
-#chapterContent h1,
-#chapterContent h2,
-#chapterContent h3,
-#chapterContent h4,
-#chapterContent h5,
-#chapterContent h6,
-#chapterContent li,
-#chapterContent blockquote {
-    position: relative;
-}
-
-.tts-paragraph-play {
-    position: absolute;
-    left: -32px;
-    top: 4px;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: var(--accent-primary);
-    color: white;
-    border: none;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.2s, transform 0.1s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    padding: 0;
-    z-index: 10;
-}
-
-.tts-paragraph-play:hover {
-    transform: scale(1.1);
-    filter: brightness(1.1);
-}
-
-.tts-paragraph-play:active {
-    transform: scale(0.95);
-}
-
-/* Show play button on paragraph hover */
-#chapterContent p:hover > .tts-paragraph-play,
-#chapterContent h1:hover > .tts-paragraph-play,
-#chapterContent h2:hover > .tts-paragraph-play,
-#chapterContent h3:hover > .tts-paragraph-play,
-#chapterContent h4:hover > .tts-paragraph-play,
-#chapterContent h5:hover > .tts-paragraph-play,
-#chapterContent h6:hover > .tts-paragraph-play,
-#chapterContent li:hover > .tts-paragraph-play,
-#chapterContent blockquote:hover > .tts-paragraph-play {
-    opacity: 1;
-}
-
-/* Hide play buttons on mobile (touch devices) - they can tap to play instead */
-@media (max-width: 768px) {
-    .tts-paragraph-play {
-        display: none;
-    }
 }
 
 /* ===== Mobile Responsive ===== */
