@@ -80,15 +80,21 @@
         li.toc-item { margin-bottom: 8px; }
         a.toc-link { text-decoration: none; color: var(--text-secondary); font-size: 0.95em; display: block; padding: 4px 8px; margin: 0 -8px; line-height: 1.4; transition: all 0.2s; border-radius: 4px; }
         a.toc-link:hover { color: var(--text-primary); background: var(--bg-button-hover); }
-        /* Active chapter - highlighted background */
+        /* Parent chapter - light highlight */
+        a.toc-link.active-parent {
+            background: rgba(220, 38, 38, 0.08);
+            color: var(--text-primary);
+        }
+        body.dark-mode a.toc-link.active-parent {
+            background: rgba(248, 113, 113, 0.1);
+        }
+        /* Active sub-chapter - bold red */
         a.toc-link.active {
             color: #dc2626;
             font-weight: bold;
-            background: rgba(220, 38, 38, 0.1);
         }
         body.dark-mode a.toc-link.active {
             color: #f87171;
-            background: rgba(248, 113, 113, 0.15);
         }
 
         /* Main Content */
@@ -884,13 +890,15 @@
             const targetHref = currentHash ? `${currentChapterFile}#${currentHash}` : currentChapterFile;
             console.log('Target href to match:', targetHref);
 
-            // Remove active class from all TOC links
+            // Remove active and active-parent class from all TOC links
             document.querySelectorAll('.toc-link').forEach(link => {
                 link.classList.remove('active');
+                link.classList.remove('active-parent');
             });
 
             // Find and activate the matching TOC link
             let matchFound = false;
+            let activeLink = null;
             let firstChapterLink = null; // First link matching the chapter file (fallback)
 
             document.querySelectorAll('.toc-link').forEach(link => {
@@ -906,6 +914,7 @@
                         if (linkHref === targetHref) {
                             console.log('EXACT MATCH:', linkHref);
                             link.classList.add('active');
+                            activeLink = link;
                             matchFound = true;
                         }
                         // Track first link for this chapter file (fallback)
@@ -920,7 +929,28 @@
             if (!matchFound && firstChapterLink) {
                 console.log('FALLBACK MATCH:', firstChapterLink.textContent.trim().substring(0, 50));
                 firstChapterLink.classList.add('active');
+                activeLink = firstChapterLink;
                 matchFound = true;
+            }
+
+            // If we found an active link, check if it's nested and highlight parent
+            if (activeLink) {
+                // Find parent chapter: go up through li.toc-item -> ul.toc-list -> li.toc-item
+                const parentTocItem = activeLink.closest('li.toc-item');
+                if (parentTocItem) {
+                    const parentUl = parentTocItem.parentElement;
+                    if (parentUl && parentUl.classList.contains('toc-list')) {
+                        const grandparentTocItem = parentUl.closest('li.toc-item');
+                        if (grandparentTocItem && grandparentTocItem !== parentTocItem) {
+                            // Find the toc-link in the grandparent item (the parent chapter link)
+                            const parentLink = grandparentTocItem.querySelector(':scope > a.toc-link');
+                            if (parentLink) {
+                                console.log('PARENT CHAPTER:', parentLink.textContent.trim().substring(0, 50));
+                                parentLink.classList.add('active-parent');
+                            }
+                        }
+                    }
+                }
             }
 
             if (!matchFound) {
