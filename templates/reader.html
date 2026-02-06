@@ -2021,5 +2021,27 @@
             TtsPlayer.init("{{ book_id }}", {{ chapter_index }});
         });
     </script>
+
+    <!-- Offline Support -->
+    <script src="{{ root_path }}/static/offline-db.js"></script>
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('{{ root_path }}/sw.js', { scope: '{{ root_path }}/' })
+                .then(reg => console.log('[Offline] Service Worker registered'))
+                .catch(err => console.error('[Offline] SW registration failed:', err));
+        }
+
+        // Update last_read_at for this book if downloaded
+        (async function() {
+            if (window.OfflineDB) {
+                const bookId = "{{ book_id }}";
+                const isDownloaded = await window.OfflineDB.isBookDownloaded(bookId);
+                if (isDownloaded) {
+                    await window.OfflineDB.updateBookAccess(bookId);
+                }
+            }
+        })();
+    </script>
 </body>
 </html>

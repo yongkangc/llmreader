@@ -358,6 +358,68 @@
             color: #f87171;
         }
 
+        /* Offline Download Button */
+        .book-offline-btn {
+            background: transparent;
+            border: none;
+            padding: 4px;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-radius: var(--radius-sm);
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+        }
+        .book-offline-btn:hover {
+            background: var(--accent-light);
+            color: var(--accent-primary);
+        }
+        .book-offline-btn.downloaded {
+            color: var(--accent-primary);
+        }
+        .book-offline-btn.downloading {
+            color: #f59e0b;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Offline status badge in header */
+        .offline-status {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: var(--radius-sm);
+            background: var(--border-subtle);
+            color: var(--text-muted);
+        }
+        .offline-status.online { background: #dcfce7; color: #16a34a; }
+        .offline-status.offline { background: #fef3c7; color: #d97706; }
+        body.dark-mode .offline-status.online { background: #14532d; color: #86efac; }
+        body.dark-mode .offline-status.offline { background: #451a03; color: #fcd34d; }
+
+        /* Storage usage indicator */
+        .storage-usage {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            border-radius: var(--radius-sm);
+            background: var(--border-subtle);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+        .storage-usage:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-secondary);
+        }
+        .storage-usage.has-data {
+            background: var(--accent-light);
+            color: var(--accent-primary);
+        }
+
         /* Completed Checkbox */
         .book-completed-checkbox {
             width: 16px;
@@ -562,12 +624,15 @@
         }
     </style>
     <script src="{{ root_path }}/static/theme-toggle.js"></script>
+    <script src="{{ root_path }}/static/offline-db.js"></script>
 </head>
 <body>
     <div class="container">
         <header class="header">
             <h1>Library</h1>
             <div class="header-actions">
+                <span class="storage-usage" id="storageUsage" title="Offline storage usage" onclick="showStorageDetails()">--</span>
+                <span class="offline-status" id="offlineStatus">●</span>
                 <a href="{{ root_path }}/highlights" class="btn btn-primary">Highlights</a>
                 <button class="btn btn-ghost" id="themeToggle" onclick="toggleDarkMode()" title="Toggle dark mode">
                     <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" id="themeIcon">
@@ -621,6 +686,9 @@
                                     <span class="progress-text">{{ book.progress|int }}%</span>
                                 </div>
                                 <div class="book-actions" onclick="event.stopPropagation(); event.preventDefault();">
+                                    <button class="book-offline-btn" data-book-id="{{ book.id }}" onclick="event.stopPropagation(); event.preventDefault(); toggleOfflineDownload('{{ book.id }}', this)" title="Download for offline">
+                                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+                                    </button>
                                     <button class="book-tags-btn" onclick="event.stopPropagation(); event.preventDefault(); openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
                                     <button class="book-delete-btn" onclick="event.stopPropagation(); event.preventDefault(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
                                         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
@@ -653,6 +721,9 @@
                                 <span class="progress-text">{{ book.progress|int }}%</span>
                             </div>
                             <div class="book-actions" onclick="event.stopPropagation(); event.preventDefault();">
+                                <button class="book-offline-btn" data-book-id="{{ book.id }}" onclick="event.stopPropagation(); event.preventDefault(); toggleOfflineDownload('{{ book.id }}', this)" title="Download for offline">
+                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+                                </button>
                                 <button class="book-tags-btn" onclick="event.stopPropagation(); event.preventDefault(); openTagEditor('{{ book.id }}', '', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
                                 <button class="book-delete-btn" onclick="event.stopPropagation(); event.preventDefault(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
                                     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
@@ -684,6 +755,9 @@
                                 <span class="progress-text">{{ book.progress|int }}%</span>
                             </div>
                             <div class="book-actions" onclick="event.stopPropagation(); event.preventDefault();">
+                                <button class="book-offline-btn" data-book-id="{{ book.id }}" onclick="event.stopPropagation(); event.preventDefault(); toggleOfflineDownload('{{ book.id }}', this)" title="Download for offline">
+                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+                                </button>
                                 <button class="book-tags-btn" onclick="event.stopPropagation(); event.preventDefault(); openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
                                 <button class="book-delete-btn" onclick="event.stopPropagation(); event.preventDefault(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
                                     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
@@ -855,11 +929,13 @@
             } catch (err) { alert(`Failed: ${err.message}`); }
         }
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTagEditor(); });
-        document.getElementById('tagModal').addEventListener('click', (e) => { if (e.target.id === 'tagModal') closeTagEditor(); });
 
-        // Update suggestions as user types
-        document.getElementById('tagInput').addEventListener('input', (e) => {
-            renderTagSuggestions(e.target.value);
+        // These event listeners are attached after DOM is ready (elements are below this script)
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('tagModal')?.addEventListener('click', (e) => { if (e.target.id === 'tagModal') closeTagEditor(); });
+            document.getElementById('tagInput')?.addEventListener('input', (e) => {
+                renderTagSuggestions(e.target.value);
+            });
         });
 
         async function toggleCompleted(bookId, checkbox) {
@@ -966,6 +1042,150 @@
         document.getElementById('deleteModal').addEventListener('click', (e) => {
             if (e.target.id === 'deleteModal') closeDeleteModal();
         });
+    </script>
+
+    <!-- Offline Support -->
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('{{ root_path }}/sw.js', { scope: '{{ root_path }}/' })
+                .then(reg => console.log('[Offline] Service Worker registered'))
+                .catch(err => console.error('[Offline] SW registration failed:', err));
+        }
+
+        // Update online/offline status
+        function updateOnlineStatus() {
+            const el = document.getElementById('offlineStatus');
+            if (navigator.onLine) {
+                el.textContent = '● Online';
+                el.className = 'offline-status online';
+            } else {
+                el.textContent = '✈ Offline';
+                el.className = 'offline-status offline';
+            }
+        }
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        updateOnlineStatus();
+
+        // Sync when coming back online
+        window.addEventListener('online', async () => {
+            if (window.OfflineDB) {
+                const result = await window.OfflineDB.flushOutbox();
+                if (result.success > 0) {
+                    console.log(`[Offline] Synced ${result.success} items`);
+                }
+            }
+        });
+
+        // Update storage usage display
+        async function updateStorageUsage() {
+            if (!window.OfflineDB) return;
+            const el = document.getElementById('storageUsage');
+            try {
+                const usage = await window.OfflineDB.getStorageUsage();
+                if (usage.total > 0) {
+                    el.textContent = `📦 ${window.OfflineDB.formatBytes(usage.total)} (${usage.bookCount} books)`;
+                    el.classList.add('has-data');
+                } else {
+                    el.textContent = '📦 No offline data';
+                    el.classList.remove('has-data');
+                }
+            } catch (e) {
+                el.textContent = '📦 --';
+            }
+        }
+
+        function showStorageDetails() {
+            if (!window.OfflineDB) return;
+            window.OfflineDB.getStorageUsage().then(usage => {
+                const details = [
+                    `Offline Storage Usage`,
+                    `---`,
+                    `Books: ${usage.bookCount}`,
+                    `Chapters: ${window.OfflineDB.formatBytes(usage.chapters)}`,
+                    `Images: ${window.OfflineDB.formatBytes(usage.images)}`,
+                    `Metadata: ${window.OfflineDB.formatBytes(usage.books)}`,
+                    `---`,
+                    `Total: ${window.OfflineDB.formatBytes(usage.total)}`,
+                    ``,
+                    `Books expire after ${(window.OfflineDB.TTL_MS / 1000 / 60 / 60 / 24).toFixed(0)} days.`,
+                    `Max ${window.OfflineDB.MAX_BOOKS} books stored (LRU eviction).`
+                ].join('\n');
+                alert(details);
+            });
+        }
+
+        // Mark downloaded books on page load
+        async function markDownloadedBooks() {
+            if (!window.OfflineDB) return;
+
+            // Run cleanup first (TTL + LRU)
+            await window.OfflineDB.runCleanup();
+
+            const downloadedBooks = await window.OfflineDB.getDownloadedBooks();
+            const downloadedIds = new Set(downloadedBooks.map(b => b.book_id));
+
+            document.querySelectorAll('.book-offline-btn').forEach(btn => {
+                const bookId = btn.dataset.bookId;
+                if (downloadedIds.has(bookId)) {
+                    btn.classList.add('downloaded');
+                    btn.title = 'Downloaded for offline (click to remove)';
+                    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/></svg>';
+                }
+            });
+
+            // Update storage usage after marking books
+            await updateStorageUsage();
+        }
+        markDownloadedBooks();
+
+        // Toggle offline download
+        async function toggleOfflineDownload(bookId, btn) {
+            if (!window.OfflineDB) {
+                alert('Offline storage not available');
+                return;
+            }
+
+            const isDownloaded = await window.OfflineDB.isBookDownloaded(bookId);
+
+            if (isDownloaded) {
+                // Remove download
+                if (confirm('Remove offline download?')) {
+                    await window.OfflineDB.removeDownloadedBook(bookId);
+                    btn.classList.remove('downloaded');
+                    btn.title = 'Download for offline';
+                    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>';
+                    await updateStorageUsage();
+                }
+            } else {
+                // Download
+                btn.classList.add('downloading');
+                btn.title = 'Downloading...';
+                btn.innerHTML = '⏳';
+
+                try {
+                    await window.OfflineDB.downloadBook(bookId, (completed, total) => {
+                        btn.innerHTML = `${completed}/${total}`;
+                    });
+
+                    btn.classList.remove('downloading');
+                    btn.classList.add('downloaded');
+                    btn.title = 'Downloaded for offline (click to remove)';
+                    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/></svg>';
+
+                    // Refresh UI to update other buttons if LRU eviction happened
+                    markDownloadedBooks();
+                    await updateStorageUsage();
+                } catch (err) {
+                    console.error('[Offline] Download failed:', err);
+                    btn.classList.remove('downloading');
+                    btn.title = 'Download failed - click to retry';
+                    btn.innerHTML = '❌';
+                    alert('Download failed: ' + err.message);
+                }
+            }
+        }
     </script>
 </body>
 </html>

@@ -139,6 +139,24 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates.env.globals['root_path'] = "/reader"
 
 
+# --- Service Worker Route (needs special scope header) ---
+@app.get("/sw.js")
+async def serve_service_worker():
+    """Serve the Service Worker from root with proper scope header."""
+    sw_path = os.path.join("static", "sw.js")
+    if not os.path.exists(sw_path):
+        raise HTTPException(status_code=404, detail="Service Worker not found")
+
+    with open(sw_path, 'r') as f:
+        content = f.read()
+
+    return Response(
+        content=content,
+        media_type="application/javascript",
+        headers={"Service-Worker-Allowed": "/reader/"}
+    )
+
+
 # --- Authentication Middleware ---
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -151,6 +169,10 @@ async def auth_middleware(request: Request, call_next):
 
     # Allow static files (CSS, JS, etc.)
     if path.startswith("/static/") or path.startswith("/reader/static/"):
+        return await call_next(request)
+
+    # Allow Service Worker
+    if path == "/sw.js" or path == "/reader/sw.js":
         return await call_next(request)
 
     # Allow book images (served from /read/{book_id}/images/ or /reader/read/{book_id}/images/)
@@ -808,6 +830,62 @@ async def delete_book(book_id: str):
 
 
 # --- Highlights API ---
+
+@app.get("/api/books/{book_id}/offline-package")
+async def get_offline_package(book_id: str):
+    """
+    Returns everything needed to download a book for offline reading.
+    Includes metadata, TOC, all chapters, and image manifest.
+    """
+    book = load_book_cached(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    # Build chapters array
+    chapters = []
+    for idx, chapter in enumerate(book.spine):
+        chapters.append({
+            "index": idx,
+            "href": chapter.href,
+            "title": chapter.title,
+            "html": chapter.content,
+        })
+
+    # Build image manifest (paths for client to fetch)
+    images = []
+    for original_path, local_filename in book.images.items():
+        images.append({
+            "path": f"/reader/read/{book_id}/images/{local_filename}",
+            "original": original_path,
+        })
+
+    # Convert TOC to serializable format
+    def toc_to_dict(entries):
+        result = []
+        for entry in entries:
+            result.append({
+                "title": entry.title,
+                "href": entry.href,
+                "file_href": entry.file_href,
+                "anchor": entry.anchor,
+                "children": toc_to_dict(entry.children) if entry.children else []
+            })
+        return result
+
+    return {
+        "book_id": book_id,
+        "metadata": {
+            "title": book.metadata.title,
+            "authors": book.metadata.authors,
+            "language": book.metadata.language,
+        },
+        "toc": toc_to_dict(book.toc),
+        "spine": [{"index": idx, "href": ch.href, "title": ch.title} for idx, ch in enumerate(book.spine)],
+        "chapters": chapters,
+        "images": images,
+        "spine_len": len(book.spine),
+    }
+
 
 @app.get("/api/highlights")
 async def get_all_highlights():
