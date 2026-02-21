@@ -4,289 +4,275 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Highlights</title>
+    <link rel="stylesheet" href="{{ root_path }}/static/theme.css">
+    <link rel="stylesheet" href="{{ root_path }}/static/app.css">
     <style>
-        :root {
-            --bg-main: #fafafa;
-            --bg-card: #ffffff;
-            --bg-card-hover: #f8f9fa;
-            --text-primary: #1a1a2e;
-            --text-secondary: #4a5568;
-            --text-muted: #718096;
-            --border-subtle: #e2e8f0;
-            --border-medium: #cbd5e1;
-            --accent-primary: #2563eb;
-            --accent-hover: #1d4ed8;
-            --accent-light: #dbeafe;
-            --highlight-color: #fef08a;
-            --highlight-border: #eab308;
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
-            --radius-sm: 6px;
-            --radius-md: 10px;
-            --transition: 0.2s ease;
-        }
+    /* Page-specific styles for Highlights */
+    .page-highlights {
+        font-family: var(--font-sans);
+        min-height: 100vh;
+    }
 
-        body.dark-mode {
-            --bg-main: #0f0f0f;
-            --bg-card: #1a1a1a;
-            --bg-card-hover: #242424;
-            --text-primary: #f0f0f0;
-            --text-secondary: #a0a0a0;
-            --text-muted: #707070;
-            --border-subtle: #2a2a2a;
-            --border-medium: #3a3a3a;
-            --accent-primary: #60a5fa;
-            --accent-hover: #93c5fd;
-            --accent-light: #1e3a5f;
-            --highlight-color: #854d0e;
-            --highlight-border: #a16207;
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
-            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.3);
-        }
+    .container {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: var(--space-8) var(--space-5);
+    }
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Sticky Header */
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-7);
+        gap: var(--space-4);
+        flex-wrap: wrap;
+        position: sticky;
+        top: 0;
+        background: var(--bg-main);
+        padding: var(--space-4) 0;
+        z-index: 20;
+        border-bottom: 1px solid transparent;
+        transition: border-color var(--transition);
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: var(--bg-main);
-            color: var(--text-primary);
-            line-height: 1.5;
-            min-height: 100vh;
-            transition: background-color var(--transition), color var(--transition);
-        }
+    .header.scrolled {
+        border-bottom-color: var(--border-subtle);
+    }
 
-        .container {
-            max-width: 760px;
-            margin: 0 auto;
-            padding: 48px 24px;
-        }
+    .header h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        color: var(--text-primary);
+    }
 
-        /* Header */
+    .header-actions {
+        display: flex;
+        gap: var(--space-2);
+        align-items: center;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: var(--space-2) var(--space-4);
+        font-size: 0.875rem;
+        font-weight: 500;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all var(--transition);
+        text-decoration: none;
+        border: none;
+        font-family: var(--font-sans);
+    }
+
+    .btn-primary {
+        background: var(--accent-primary);
+        color: white;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    .btn-secondary {
+        background: var(--bg-card);
+        color: var(--text-primary);
+        border: 1px solid var(--border-subtle);
+    }
+    .btn-secondary:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--border-medium);
+    }
+
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+        padding: var(--space-2);
+    }
+    .btn-ghost:hover {
+        background: var(--bg-card-hover);
+        color: var(--text-primary);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 100px var(--space-5);
+        color: var(--text-muted);
+    }
+    .empty-state h2 {
+        font-size: 1.25rem;
+        font-weight: 500;
+        margin-bottom: var(--space-2);
+        color: var(--text-secondary);
+    }
+    .empty-state p {
+        font-size: 0.9375rem;
+        margin-bottom: var(--space-5);
+    }
+
+    /* Book Section - using details/summary for collapsible */
+    .book-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        margin-bottom: var(--space-6);
+        overflow: hidden;
+        transition: box-shadow var(--transition);
+    }
+    .book-section:hover {
+        box-shadow: var(--shadow-sm);
+    }
+
+    .book-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: var(--space-5) var(--space-5);
+        gap: var(--space-4);
+        cursor: pointer;
+        user-select: none;
+        list-style: none;
+    }
+
+    .book-header::-webkit-details-marker {
+        display: none;
+    }
+
+    .book-header-left {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .book-title {
+        font-size: 1.0625rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 2px;
+    }
+
+    .book-author {
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+    }
+
+    .highlight-count {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        background: var(--bg-surface);
+        padding: 4px 12px;
+        border-radius: 20px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    /* Chapter Section */
+    .chapter-section {
+        padding: var(--space-5);
+    }
+    .chapter-section:not(:last-child) {
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .chapter-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+        margin-bottom: var(--space-4);
+    }
+
+    /* Highlight Item */
+    .highlight-item {
+        padding: var(--space-4);
+        background: var(--bg-surface);
+        border-radius: var(--radius-sm);
+        border-left: 3px solid var(--highlight-border, #eab308);
+        margin-bottom: var(--space-3);
+        transition: background var(--transition);
+    }
+    .highlight-item:last-child { margin-bottom: 0; }
+    .highlight-item:hover { background: var(--bg-card-hover); }
+
+    .highlight-text {
+        font-size: 0.9375rem;
+        line-height: 1.75;
+        color: var(--text-primary);
+        font-family: var(--font-serif);
+        font-style: italic;
+    }
+
+    .highlight-text::before { content: '\201C'; }
+    .highlight-text::after { content: '\201D'; }
+
+    .highlight-note {
+        margin-top: var(--space-3);
+        padding: var(--space-3);
+        background: var(--accent-light);
+        border-radius: var(--radius-sm);
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+        line-height: 1.6;
+    }
+    .highlight-note strong {
+        color: var(--accent-primary);
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .highlight-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: var(--space-3);
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .view-link {
+        color: var(--accent-primary);
+        text-decoration: none;
+        font-weight: 500;
+        padding: 4px 8px;
+        border-radius: var(--radius-sm);
+        transition: all var(--transition);
+    }
+    .view-link:hover {
+        background: var(--accent-light);
+        color: var(--accent-hover);
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+        .container { padding: var(--space-5) var(--space-4); }
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 40px;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-
-        .header h1 {
-            font-size: 1.75rem;
-            font-weight: 600;
-            letter-spacing: -0.025em;
-            color: var(--text-primary);
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 8px 16px;
-            font-size: 0.875rem;
-            font-weight: 500;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: all var(--transition);
-            text-decoration: none;
-            border: none;
-        }
-
-        .btn-primary {
-            background: var(--accent-primary);
-            color: white;
-        }
-        .btn-primary:hover {
-            background: var(--accent-hover);
-        }
-
-        .btn-secondary {
-            background: var(--bg-card);
-            color: var(--text-primary);
-            border: 1px solid var(--border-subtle);
-        }
-        .btn-secondary:hover {
-            background: var(--bg-card-hover);
-            border-color: var(--border-medium);
-        }
-
-        .btn-ghost {
-            background: transparent;
-            color: var(--text-secondary);
-            padding: 8px;
-        }
-        .btn-ghost:hover {
-            background: var(--bg-card-hover);
-            color: var(--text-primary);
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 80px 24px;
-            color: var(--text-muted);
-        }
-        .empty-state h2 {
-            font-size: 1.25rem;
-            font-weight: 500;
-            margin-bottom: 8px;
-            color: var(--text-secondary);
-        }
-        .empty-state p {
-            font-size: 0.9375rem;
-            margin-bottom: 24px;
-        }
-
-        /* Book Section */
-        .book-section {
-            background: var(--bg-card);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            margin-bottom: 32px;
-            overflow: hidden;
-        }
-
-        .book-header {
-            display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: flex-start;
-            padding: 20px 24px;
-            border-bottom: 1px solid var(--border-subtle);
-            gap: 16px;
+            margin-bottom: var(--space-5);
+            padding: var(--space-3) 0;
         }
-
-        .book-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
+        .header h1 { font-size: 1.5rem; }
+        .header-actions { width: 100%; }
+        .book-header {
+            flex-direction: column;
+            padding: var(--space-4);
         }
-
-        .book-author {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-        }
-
-        .highlight-count {
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            background: var(--border-subtle);
-            padding: 4px 10px;
-            border-radius: 12px;
-            white-space: nowrap;
-        }
-
-        /* Chapter Section */
-        .chapter-section {
-            padding: 20px 24px;
-        }
-        .chapter-section:not(:last-child) {
-            border-bottom: 1px solid var(--border-subtle);
-        }
-
-        .chapter-title {
-            font-size: 0.8125rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            margin-bottom: 16px;
-        }
-
-        /* Highlight Item */
-        .highlight-item {
-            padding: 16px;
-            background: var(--bg-main);
-            border-radius: var(--radius-sm);
-            border-left: 3px solid var(--highlight-border);
-            margin-bottom: 12px;
-            transition: all var(--transition);
-        }
-        .highlight-item:last-child {
-            margin-bottom: 0;
-        }
-        .highlight-item:hover {
-            background: var(--bg-card-hover);
-        }
-
-        .highlight-text {
-            font-size: 0.9375rem;
-            line-height: 1.7;
-            color: var(--text-primary);
-            font-family: Georgia, "Times New Roman", serif;
-        }
-
-        .highlight-note {
-            margin-top: 12px;
-            padding: 12px;
-            background: var(--accent-light);
-            border-radius: var(--radius-sm);
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-        .highlight-note strong {
-            color: var(--accent-primary);
-            font-weight: 500;
-        }
-
-        .highlight-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 12px;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
+        .chapter-section { padding: var(--space-4); }
+        .highlight-item { padding: var(--space-3); }
         .view-link {
-            color: var(--accent-primary);
-            text-decoration: none;
-            font-weight: 500;
-            transition: color var(--transition);
+            padding: 6px 12px;
+            background: var(--accent-light);
         }
-        .view-link:hover {
-            color: var(--accent-hover);
-        }
-
-        /* Responsive */
-        @media (max-width: 640px) {
-            .container {
-                padding: 24px 16px;
-            }
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-                margin-bottom: 28px;
-            }
-            .header h1 {
-                font-size: 1.5rem;
-            }
-            .header-actions {
-                width: 100%;
-            }
-            .book-header {
-                flex-direction: column;
-                padding: 16px 20px;
-            }
-            .chapter-section {
-                padding: 16px 20px;
-            }
-            .highlight-item {
-                padding: 14px;
-            }
-        }
-    </style>
+    }
+</style>
     <script src="{{ root_path }}/static/theme-toggle.js"></script>
 </head>
-<body>
+<body class="page-highlights">
     <div class="container">
         <header class="header">
             <h1>Highlights</h1>
@@ -309,14 +295,14 @@
         </div>
         {% else %}
             {% for book in books %}
-            <section class="book-section">
-                <div class="book-header">
-                    <div>
+            <details class="book-section" open>
+                <summary class="book-header">
+                    <div class="book-header-left">
                         <h2 class="book-title">{{ book.title }}</h2>
                         <p class="book-author">{{ book.author }}</p>
                     </div>
                     <span class="highlight-count">{{ book.total_highlights }} highlight{{ 's' if book.total_highlights != 1 else '' }}</span>
-                </div>
+                </summary>
 
                 {% for chapter in book.chapters %}
                 <div class="chapter-section">
@@ -324,7 +310,7 @@
 
                     {% for highlight in chapter.highlights %}
                     <div class="highlight-item">
-                        <p class="highlight-text">"{{ highlight.text }}"</p>
+                        <p class="highlight-text">{{ highlight.text }}</p>
 
                         {% if highlight.note %}
                         <div class="highlight-note">
@@ -340,11 +326,20 @@
                     {% endfor %}
                 </div>
                 {% endfor %}
-            </section>
+            </details>
             {% endfor %}
         {% endif %}
     </div>
 
     <!-- Theme functions loaded from /static/theme-toggle.js -->
+    <script>
+        // Show border on sticky header when scrolled
+        const header = document.querySelector('.header');
+        if (header) {
+            window.addEventListener('scroll', () => {
+                header.classList.toggle('scrolled', window.scrollY > 10);
+            }, { passive: true });
+        }
+    </script>
 </body>
 </html>

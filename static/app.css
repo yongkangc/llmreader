@@ -1,0 +1,188 @@
+/* LLMReader Shared Components */
+
+/* Smooth Scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Focus States */
+:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+    border-radius: var(--radius-sm);
+}
+
+a:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+    border-radius: 2px;
+}
+
+/* Selection Colors */
+::selection {
+    background: var(--accent-light);
+    color: var(--text-primary);
+}
+
+body.dark-mode ::selection {
+    background: rgba(96, 165, 250, 0.3);
+}
+
+/* Image Handling */
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    html {
+        scroll-behavior: auto;
+    }
+}
+
+/* Layout Primitives */
+.app-container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-5);
+}
+
+.app-container--wide {
+    max-width: 1200px;
+}
+
+/* Stack (vertical spacing) */
+.stack > * + * {
+    margin-top: var(--space-5);
+}
+
+.stack--sm > * + * {
+    margin-top: var(--space-3);
+}
+
+/* Topbar */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-4);
+    margin-bottom: var(--space-7);
+}
+
+.topbar__actions {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+}
+
+/* Card */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card--interactive:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-medium);
+}
+
+/* Icon Button */
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition);
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.icon-btn:hover {
+    background: var(--bg-card-hover, var(--bg-button-hover));
+    color: var(--text-primary);
+}
+
+.icon-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Safe Area Utilities */
+.safe-top {
+    padding-top: max(16px, env(safe-area-inset-top));
+}
+
+.safe-bottom {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+/* Page-specific body markers for scoped overrides */
+.page-login {}
+.page-library {}
+.page-reader {}
+.page-highlights {}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .app-container {
+        padding: var(--space-5) var(--space-4);
+    }
+}
+
+@media (max-width: 360px) {
+    .app-container {
+        padding: var(--space-4) var(--space-3);
+    }
+}
+
+/* Consistent Icon Sizing */
+.btn-ghost svg, .top-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Reader Typography */
+.page-reader #main {
+    font-family: var(--font-serif);
+}
+
+/* Touch-Friendly Hit Targets */
+@media (pointer: coarse) {
+    .icon-btn, .btn-ghost, .top-btn, .sidebar-toggle, .font-size-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+/* Safe Area Insets (iOS notch/home indicator) */
+@supports (padding: env(safe-area-inset-top)) {
+    .page-reader .sidebar-toggle {
+        top: max(20px, env(safe-area-inset-top));
+        left: max(20px, env(safe-area-inset-left));
+    }
+
+    .page-reader .top-actions {
+        top: max(16px, env(safe-area-inset-top));
+        right: max(16px, env(safe-area-inset-right));
+    }
+}

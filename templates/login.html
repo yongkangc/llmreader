@@ -4,173 +4,139 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - LLMReader</title>
+    <link rel="stylesheet" href="{{ root_path }}/static/theme.css">
+    <link rel="stylesheet" href="{{ root_path }}/static/app.css">
     <style>
-        /* Theme Variables - matching library.html */
-        :root {
-            --bg-main: #f4f4f9;
-            --bg-card: #ffffff;
-            --text-primary: #2c3e50;
-            --text-secondary: #666666;
-            --text-muted: #6c757d;
-            --border-light: #dddddd;
-            --border-medium: #e8e8ef;
-            --accent-primary: #3498db;
-            --accent-primary-hover: #2d89c8;
-            --shadow-card: rgba(0,0,0,0.1);
-            --error-color: #d6336c;
-            --error-bg: #ffeef3;
-        }
-
-        body.dark-mode {
-            --bg-main: #1a1a1a;
-            --bg-card: #2d2d2d;
-            --text-primary: #e0e0e0;
-            --text-secondary: #b0b0b0;
-            --text-muted: #888888;
-            --border-light: #4a4a4a;
-            --border-medium: #3d3d3d;
-            --accent-primary: #7db8f5;
-            --accent-primary-hover: #5ca3e8;
-            --shadow-card: rgba(0,0,0,0.3);
-            --error-color: #ff6b9d;
-            --error-bg: #3d2a2f;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: var(--bg-main);
-            margin: 0;
-            padding: 0;
+        .page-login {
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background-color 0.3s, color 0.3s;
+            min-height: 100dvh;
+            display: grid;
+            place-items: center;
+            padding: var(--space-4);
+            font-family: var(--font-sans);
         }
 
         .login-container {
             width: 100%;
             max-width: 400px;
-            padding: 20px;
         }
 
         .login-card {
-            background: var(--bg-card);
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px var(--shadow-card);
-            border: 1px solid var(--border-medium);
-            transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+            background: var(--bg-elevated);
+            padding: var(--space-7) var(--space-6);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-subtle);
         }
 
         .login-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: var(--space-6);
         }
 
         .login-title {
-            font-size: 1.8em;
+            font-size: 1.75rem;
             font-weight: 700;
+            letter-spacing: -0.03em;
             color: var(--text-primary);
-            margin: 0 0 8px 0;
-            transition: color 0.3s;
+            margin: 0 0 var(--space-2) 0;
         }
 
         .login-subtitle {
             color: var(--text-muted);
-            font-size: 0.95em;
+            font-size: 0.9375rem;
             margin: 0;
-            transition: color 0.3s;
         }
 
         .error-message {
-            background: var(--error-bg);
-            color: var(--error-color);
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 0.9em;
+            background: rgba(220, 38, 38, 0.08);
+            color: var(--accent-error, #dc2626);
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--space-5);
+            font-size: 0.875rem;
             text-align: center;
+            border: 1px solid rgba(220, 38, 38, 0.15);
+        }
+
+        body.dark-mode .error-message {
+            background: rgba(248, 113, 113, 0.1);
+            color: var(--accent-error, #f87171);
+            border-color: rgba(248, 113, 113, 0.2);
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: var(--space-5);
         }
 
         .form-label {
             display: block;
             font-weight: 600;
             color: var(--text-primary);
-            margin-bottom: 8px;
-            font-size: 0.95em;
-            transition: color 0.3s;
+            margin-bottom: var(--space-2);
+            font-size: 0.875rem;
         }
 
         .form-input {
             width: 100%;
-            padding: 12px 16px;
+            padding: var(--space-3) var(--space-4);
             border: 1px solid var(--border-medium);
-            border-radius: 8px;
-            font-size: 1em;
-            background: var(--bg-main);
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            background: var(--bg-surface);
             color: var(--text-primary);
-            transition: all 0.3s;
+            transition: border-color var(--transition), box-shadow var(--transition);
+            font-family: var(--font-sans);
         }
 
         .form-input:focus {
             outline: none;
             border-color: var(--accent-primary);
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+            box-shadow: var(--ring);
         }
 
         .submit-btn {
             width: 100%;
-            padding: 14px 20px;
+            padding: var(--space-3) var(--space-5);
             background: var(--accent-primary);
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 1em;
+            border-radius: var(--radius-sm);
+            font-size: 0.9375rem;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: background-color var(--transition), transform 0.1s ease;
+            font-family: var(--font-sans);
         }
 
         .submit-btn:hover {
-            background: var(--accent-primary-hover);
+            background: var(--accent-hover);
         }
 
         .submit-btn:active {
-            transform: translateY(1px);
+            transform: scale(0.985);
         }
 
         .theme-toggle {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--bg-card);
-            color: var(--text-secondary);
-            border: 1px solid var(--border-medium);
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1.2em;
-            transition: all 0.3s;
+            top: max(var(--space-4), env(safe-area-inset-top));
+            right: max(var(--space-4), env(safe-area-inset-right));
+            z-index: 50;
         }
 
-        .theme-toggle:hover {
-            background: var(--bg-main);
-            border-color: var(--accent-primary);
+        @media (max-width: 480px) {
+            .login-card {
+                padding: var(--space-6) var(--space-5);
+            }
+            .login-title {
+                font-size: 1.5rem;
+            }
         }
     </style>
     <script src="{{ root_path }}/static/theme-toggle.js"></script>
 </head>
-<body>
-    <button class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+<body class="page-login">
+    <button class="icon-btn theme-toggle" id="themeToggle" onclick="toggleDarkMode()" title="Toggle dark mode">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="themeIcon">
             <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"></path>
         </svg>

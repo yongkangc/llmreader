@@ -4,63 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Library</title>
+    <link rel="stylesheet" href="{{ root_path }}/static/theme.css">
+    <link rel="stylesheet" href="{{ root_path }}/static/app.css">
     <style>
-        :root {
-            --bg-main: #fafafa;
-            --bg-card: #ffffff;
-            --bg-card-hover: #f8f9fa;
-            --bg-dropzone: #f8fafc;
-            --bg-dropzone-hover: #f1f5f9;
-            --bg-dropzone-drag: #e2e8f0;
-            --text-primary: #1a1a2e;
-            --text-secondary: #4a5568;
-            --text-muted: #718096;
-            --border-subtle: #e2e8f0;
-            --border-medium: #cbd5e1;
-            --accent-primary: #2563eb;
-            --accent-hover: #1d4ed8;
-            --accent-light: #dbeafe;
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
-            --radius-sm: 6px;
-            --radius-md: 10px;
-            --transition: 0.2s ease;
-        }
-
-        body.dark-mode {
-            --bg-main: #0f0f0f;
-            --bg-card: #1a1a1a;
-            --bg-card-hover: #242424;
-            --bg-dropzone: #1e1e1e;
-            --bg-dropzone-hover: #2a2a2a;
-            --bg-dropzone-drag: #333333;
-            --text-primary: #f0f0f0;
-            --text-secondary: #a0a0a0;
-            --text-muted: #707070;
-            --border-subtle: #2a2a2a;
-            --border-medium: #3a3a3a;
-            --accent-primary: #60a5fa;
-            --accent-hover: #93c5fd;
-            --accent-light: #1e3a5f;
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
-            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.3);
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: var(--bg-main);
-            color: var(--text-primary);
-            line-height: 1.5;
-            min-height: 100vh;
-            transition: background-color var(--transition), color var(--transition);
-        }
-
         .container {
-            max-width: 720px;
+            max-width: 1000px;
             margin: 0 auto;
-            padding: 48px 24px;
+            padding: var(--space-8) var(--space-5);
         }
 
         /* Header */
@@ -68,52 +18,20 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 40px;
+            margin-bottom: var(--space-7);
         }
 
         .header h1 {
             font-size: 1.75rem;
-            font-weight: 600;
-            letter-spacing: -0.025em;
+            font-weight: 700;
+            letter-spacing: -0.03em;
             color: var(--text-primary);
         }
 
         .header-actions {
             display: flex;
-            gap: 8px;
+            gap: var(--space-2);
             align-items: center;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 8px 16px;
-            font-size: 0.875rem;
-            font-weight: 500;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: all var(--transition);
-            text-decoration: none;
-            border: none;
-        }
-
-        .btn-primary {
-            background: var(--accent-primary);
-            color: white;
-        }
-        .btn-primary:hover {
-            background: var(--accent-hover);
-        }
-
-        .btn-ghost {
-            background: transparent;
-            color: var(--text-secondary);
-            padding: 8px;
-        }
-        .btn-ghost:hover {
-            background: var(--bg-card-hover);
-            color: var(--text-primary);
         }
 
         /* Add Book Section (bottom of page) */
@@ -152,27 +70,27 @@
         .dropzone {
             display: none;
             border: 2px dashed var(--border-medium);
-            border-radius: var(--radius-sm);
-            padding: 32px;
+            border-radius: var(--radius-md);
+            padding: var(--space-7) var(--space-5);
             text-align: center;
             cursor: pointer;
             transition: all var(--transition);
             color: var(--text-muted);
-            font-size: 0.875rem;
-            margin-top: 16px;
+            font-size: 0.9375rem;
+            margin-top: var(--space-4);
+            background: var(--bg-surface);
         }
-        .dropzone.show {
-            display: block;
-        }
+        .dropzone.show { display: block; }
         .dropzone:hover {
             border-color: var(--accent-primary);
-            background: var(--bg-dropzone-hover);
-            color: var(--text-secondary);
+            background: var(--accent-light);
+            color: var(--text-primary);
         }
         .dropzone.dragging {
             border-color: var(--accent-primary);
             background: var(--accent-light);
             color: var(--accent-primary);
+            transform: scale(1.01);
         }
 
         .upload-status {
@@ -183,11 +101,11 @@
         }
         .upload-status.error { color: #dc2626; }
 
-        /* Book List - responsive grid that adapts to screen width */
+        /* Book List */
         .book-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-6);
         }
 
         /* Tag Section */
@@ -196,11 +114,11 @@
         .tag-header {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 8px 0;
+            gap: var(--space-3);
+            padding: var(--space-2) 0;
             cursor: pointer;
             user-select: none;
-            margin-bottom: 8px;
+            margin-bottom: var(--space-3);
         }
         .tag-header:hover .tag-title {
             color: var(--accent-primary);
@@ -216,10 +134,10 @@
         }
 
         .tag-title {
-            font-size: 0.8125rem;
+            font-size: 0.75rem;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.1em;
             color: var(--text-muted);
             transition: color var(--transition);
         }
@@ -230,29 +148,58 @@
         }
 
         .tag-books {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: var(--space-3);
         }
         .tag-section.collapsed .tag-books {
             display: none;
         }
 
-        /* Book Row */
+        /* Book Row (Card) */
         .book-row {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 14px 16px;
-            background: transparent;
-            border-radius: var(--radius-sm);
+            gap: var(--space-4);
+            padding: var(--space-4);
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
             text-decoration: none;
-            transition: all var(--transition);
-            border: 1px solid transparent;
+            transition: all var(--ease) 0.2s;
+            position: relative;
         }
         .book-row:hover {
-            background: var(--bg-card);
-            border-color: var(--border-subtle);
+            border-color: var(--border-medium);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+
+        /* Book Cover */
+        .book-cover-container {
+            width: 48px;
+            height: 68px;
+            border-radius: 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, var(--accent-light), var(--bg-surface));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .book-cover-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .book-cover-fallback {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            opacity: 0.5;
         }
 
         .book-info {
@@ -287,8 +234,8 @@
         }
 
         .progress-track {
-            width: 60px;
-            height: 3px;
+            width: 64px;
+            height: 4px;
             background: var(--border-subtle);
             border-radius: 2px;
             overflow: hidden;
@@ -298,7 +245,7 @@
             height: 100%;
             background: var(--accent-primary);
             border-radius: 2px;
-            transition: width 0.3s ease;
+            transition: width 0.5s var(--ease);
         }
 
         .progress-text {
@@ -595,27 +542,13 @@
         /* Responsive */
         @media (max-width: 640px) {
             .container {
-                padding: 24px 16px;
+                padding: var(--space-5) var(--space-4);
             }
-            .header {
-                margin-bottom: 28px;
+            .tag-books {
+                grid-template-columns: 1fr;
             }
             .header h1 {
                 font-size: 1.5rem;
-            }
-            .book-row {
-                flex-wrap: wrap;
-                gap: 12px;
-            }
-            .book-info {
-                width: 100%;
-            }
-            .book-progress {
-                flex: 1;
-            }
-            .progress-track {
-                flex: 1;
-                width: auto;
             }
             /* Always show actions on mobile (no hover) */
             .book-actions {
@@ -626,7 +559,7 @@
     <script src="{{ root_path }}/static/theme-toggle.js"></script>
     <script src="{{ root_path }}/static/offline-db.js"></script>
 </head>
-<body>
+<body class="page-library">
     <div class="container">
         <header class="header">
             <h1>Library</h1>
@@ -677,6 +610,14 @@
                         <div class="tag-books">
                             {% for book in books_by_tag[tag] %}
                             <a href="{{ root_path }}/read/{{ book.id }}/{{ book.last_chapter }}" class="book-row">
+                                <div class="book-cover-container">
+                                    {% if book.cover_image %}
+                                        <img class="book-cover-img" src="{{ root_path }}{{ book.cover_image }}" alt="" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                                        <span class="book-cover-fallback" style="display:none">{{ book.title[0] }}</span>
+                                    {% else %}
+                                        <span class="book-cover-fallback">{{ book.title[0] }}</span>
+                                    {% endif %}
+                                </div>
                                 <div class="book-info">
                                     <div class="book-title">{{ book.title }}</div>
                                     <div class="book-author">{{ book.author }}</div>
@@ -712,6 +653,14 @@
                     <div class="tag-books">
                         {% for book in untagged_books %}
                         <a href="{{ root_path }}/read/{{ book.id }}/{{ book.last_chapter }}" class="book-row">
+                            <div class="book-cover-container">
+                                {% if book.cover_image %}
+                                    <img class="book-cover-img" src="{{ root_path }}{{ book.cover_image }}" alt="" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                                    <span class="book-cover-fallback" style="display:none">{{ book.title[0] }}</span>
+                                {% else %}
+                                    <span class="book-cover-fallback">{{ book.title[0] }}</span>
+                                {% endif %}
+                            </div>
                             <div class="book-info">
                                 <div class="book-title">{{ book.title }}</div>
                                 <div class="book-author">{{ book.author }}</div>
@@ -746,6 +695,14 @@
                     <div class="tag-books">
                         {% for book in completed_books %}
                         <a href="{{ root_path }}/read/{{ book.id }}/{{ book.last_chapter }}" class="book-row">
+                            <div class="book-cover-container">
+                                {% if book.cover_image %}
+                                    <img class="book-cover-img" src="{{ root_path }}{{ book.cover_image }}" alt="" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                                    <span class="book-cover-fallback" style="display:none">{{ book.title[0] }}</span>
+                                {% else %}
+                                    <span class="book-cover-fallback">{{ book.title[0] }}</span>
+                                {% endif %}
+                            </div>
                             <div class="book-info">
                                 <div class="book-title">{{ book.title }}</div>
                                 <div class="book-author">{{ book.author }}</div>
