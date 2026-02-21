@@ -1882,8 +1882,6 @@
 
         // Remove highlight
         async function removeHighlight() {
-            if (!confirm('Remove this highlight?')) return;
-
             try {
                 const response = await fetch(`{{ root_path }}/api/highlights/${currentHighlightId}`, {
                     method: 'DELETE'
