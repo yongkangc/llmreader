@@ -105,7 +105,7 @@
         .book-list {
             display: flex;
             flex-direction: column;
-            gap: var(--space-6);
+            gap: var(--space-5);
         }
 
         /* Tag Section */
@@ -114,18 +114,18 @@
         .tag-header {
             display: flex;
             align-items: center;
-            gap: var(--space-3);
-            padding: var(--space-2) 0;
+            gap: var(--space-2);
+            padding: 0;
             cursor: pointer;
             user-select: none;
-            margin-bottom: var(--space-3);
+            margin-bottom: var(--space-2);
         }
         .tag-header:hover .tag-title {
             color: var(--accent-primary);
         }
 
         .tag-icon {
-            font-size: 0.625rem;
+            font-size: 0.5rem;
             color: var(--text-muted);
             transition: transform var(--transition);
         }
@@ -134,7 +134,7 @@
         }
 
         .tag-title {
-            font-size: 0.75rem;
+            font-size: 0.6875rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.1em;
@@ -143,14 +143,13 @@
         }
 
         .tag-count {
-            font-size: 0.75rem;
-            color: var(--text-muted);
+            display: none;
         }
 
         .tag-books {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: var(--space-3);
+            gap: var(--space-2);
         }
         .tag-section.collapsed .tag-books {
             display: none;
