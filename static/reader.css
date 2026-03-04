@@ -105,7 +105,13 @@ body.sidebar-collapsed .sidebar-toggle { left: auto; right: 160px; }
     /* Adjust content padding on mobile */
     .content-container {
         max-width: 100%;
-        padding: 60px 20px;
+        padding: 60px max(16px, env(safe-area-inset-right)) 80px max(16px, env(safe-area-inset-left));
+        font-size: clamp(16px, 4vw, 19px);
+    }
+
+    .book-content p {
+        text-align: left;
+        hyphens: none;
     }
 
     /* Sidebar toggle button position on mobile */
@@ -127,6 +133,11 @@ body.sidebar-collapsed .sidebar-toggle { left: auto; right: 160px; }
         right: auto;
     }
 
+    /* Sidebar width for narrow screens */
+    #sidebar {
+        width: min(300px, 85vw);
+    }
+
     /* Backdrop when sidebar is open on mobile */
     body.sidebar-open::before {
         content: '';
@@ -137,6 +148,16 @@ body.sidebar-collapsed .sidebar-toggle { left: auto; right: 160px; }
         bottom: 0;
         background: rgba(0, 0, 0, 0.5);
         z-index: 25;
+    }
+
+    /* Chapter nav on mobile */
+    .chapter-nav {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .nav-btn {
+        padding: 8px 14px;
+        font-size: 0.8125rem;
     }
 }
 

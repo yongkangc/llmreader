@@ -11,6 +11,7 @@
             max-width: 1000px;
             margin: 0 auto;
             padding: var(--space-8) var(--space-5);
+            overflow-x: hidden;
         }
 
         /* Header */
@@ -19,6 +20,8 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: var(--space-7);
+            gap: var(--space-3);
+            flex-wrap: wrap;
         }
 
         .header h1 {
@@ -32,6 +35,7 @@
             display: flex;
             gap: var(--space-2);
             align-items: center;
+            flex-wrap: wrap;
         }
 
         /* Add Book Section (bottom of page) */
@@ -546,12 +550,33 @@
             .tag-books {
                 grid-template-columns: 1fr;
             }
+            .header {
+                flex-wrap: wrap;
+                gap: var(--space-3);
+            }
             .header h1 {
                 font-size: 1.5rem;
+            }
+            .header-actions {
+                flex-wrap: wrap;
+                gap: var(--space-2);
             }
             /* Always show actions on mobile (no hover) */
             .book-actions {
                 opacity: 1;
+            }
+            /* Stack book row vertically on small screens */
+            .book-row {
+                flex-wrap: wrap;
+                gap: var(--space-3);
+            }
+            .book-progress {
+                width: 100%;
+                justify-content: flex-start;
+            }
+            .progress-track {
+                flex: 1;
+                max-width: 120px;
             }
         }
     </style>

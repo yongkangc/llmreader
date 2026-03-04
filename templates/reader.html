@@ -204,6 +204,33 @@
             .sidebar-close:hover {
                 background: var(--bg-button-hover);
             }
+
+            /* Top actions on mobile - smaller gap, ensure no overflow */
+            .top-actions {
+                right: 8px;
+                top: 10px;
+                gap: 2px;
+            }
+            .top-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 0.9em;
+            }
+
+            /* Chapter nav on mobile */
+            .chapter-nav {
+                flex-wrap: wrap;
+                gap: var(--space-3, 12px);
+            }
+            .nav-btn {
+                padding: 8px 14px;
+                font-size: 0.8125rem;
+            }
+
+            /* Sidebar width for narrow screens */
+            #sidebar {
+                width: min(300px, 85vw);
+            }
         }
 
         /* Hide close button on desktop */
