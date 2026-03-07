@@ -265,10 +265,15 @@
             align-items: center;
             gap: 4px;
             opacity: 0;
-            transition: opacity var(--transition);
+            width: 0;
+            overflow: hidden;
+            transition: opacity var(--transition), width var(--transition);
+            flex-shrink: 0;
         }
         .book-row:hover .book-actions {
             opacity: 1;
+            width: auto;
+            overflow: visible;
         }
 
         .book-tags-btn {
@@ -564,6 +569,8 @@
             /* Always show actions on mobile (no hover) */
             .book-actions {
                 opacity: 1;
+                width: auto;
+                overflow: visible;
             }
             /* Stack book row vertically on small screens */
             .book-row {
