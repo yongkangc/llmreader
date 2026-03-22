@@ -9,6 +9,7 @@ const STATIC_ASSETS = [
     '/reader/static/theme.css',
     '/reader/static/theme-toggle.js',
     '/reader/static/offline-shell.html',
+    '/reader/manifest.json',
 ];
 
 // Install: cache static assets

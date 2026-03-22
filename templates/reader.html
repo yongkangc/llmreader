@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#212529">
+    <link rel="manifest" href="{{ root_path }}/manifest.json">
+    <link rel="apple-touch-icon" href="{{ root_path }}/static/icons/icon-192.png">
     <title>{{ book.metadata.title }}</title>
 
     <!-- Reader Mode Detection Meta Tags -->
@@ -293,6 +298,53 @@
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%233498db'%3E%3Cpath d='M2 2v13.5a.5.5 0 0 0 .74.439L8 13.069l5.26 2.87A.5.5 0 0 0 14 15.5V2a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z'/%3E%3C/svg%3E");
             background-size: contain;
             background-repeat: no-repeat;
+        }
+
+        /* Inline sticky note attached to highlight */
+        .inline-note {
+            display: block;
+            margin: 6px 0 8px 0;
+            padding: 6px 10px;
+            background: var(--bg-surface, #f8f9fa);
+            border-left: 3px solid var(--accent-primary);
+            border-radius: 0 4px 4px 0;
+            font-family: var(--font-sans, -apple-system, sans-serif);
+            font-size: 0.82em;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-width: 100%;
+        }
+        .inline-note:hover {
+            background: var(--bg-button-hover);
+            border-color: var(--accent-hover, var(--accent-primary));
+        }
+        .inline-note .inline-note-label {
+            font-size: 0.8em;
+            font-weight: 600;
+            color: var(--accent-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .inline-note .inline-note-label svg {
+            width: 10px;
+            height: 10px;
+        }
+        .inline-note .inline-note-text {
+            color: var(--text-primary);
+        }
+        body.dark-mode .inline-note {
+            background: var(--bg-elevated, #1e1e1e);
+        }
+        body.dark-mode .inline-note:hover {
+            background: var(--bg-button-hover);
         }
 
         /* Undo Toast for Instant Highlight */
@@ -1514,6 +1566,10 @@
                             mark.addEventListener('click', (e) => showHighlightPopup(e, highlight.id));
                             mark.addEventListener('mouseenter', (e) => showNoteTooltip(e, highlight.id));
                             mark.addEventListener('mouseleave', hideNoteTooltip);
+                            // Create inline note if highlight has a note
+                            if (highlight.note && highlight.note.trim()) {
+                                createInlineNote(mark, highlight.id, highlight.note);
+                            }
                             found = true;
                             break;
                         } catch (e) {
@@ -1548,6 +1604,10 @@
                             mark.addEventListener('click', (e) => showHighlightPopup(e, highlight.id));
                             mark.addEventListener('mouseenter', (e) => showNoteTooltip(e, highlight.id));
                             mark.addEventListener('mouseleave', hideNoteTooltip);
+                            // Create inline note if highlight has a note
+                            if (highlight.note && highlight.note.trim()) {
+                                createInlineNote(mark, highlight.id, highlight.note);
+                            }
                             found = true;
                             break;
                         } catch (e) {
@@ -1722,6 +1782,9 @@
                 const result = await response.json();
 
                 if (result.success) {
+                    // Remove inline note if any
+                    removeInlineNote(lastHighlightId);
+
                     // Remove from DOM
                     const mark = document.querySelector(`[data-highlight-id="${lastHighlightId}"]`);
                     if (mark) {
@@ -1805,30 +1868,80 @@
             currentHighlightId = null;
         }
 
-        // Note tooltip on hover
+        // Note tooltip on hover (only for highlights without inline notes visible)
         function showNoteTooltip(e, highlightId) {
-            const highlight = loadedHighlights.find(h => h.id === highlightId);
-            if (!highlight || !highlight.note || !highlight.note.trim()) return;
-
-            const tooltip = document.getElementById('noteTooltip');
-            tooltip.textContent = highlight.note;
-
-            // Position above the highlight
-            const rect = e.target.getBoundingClientRect();
-            const containerRect = document.querySelector('.content-container').getBoundingClientRect();
-
-            // First show tooltip to get its height
-            tooltip.style.visibility = 'hidden';
-            tooltip.classList.add('show');
-            const tooltipHeight = tooltip.offsetHeight;
-
-            tooltip.style.left = `${rect.left - containerRect.left}px`;
-            tooltip.style.top = `${rect.top - containerRect.top - tooltipHeight - 8}px`;
-            tooltip.style.visibility = 'visible';
+            // Don't show tooltip - we use inline notes now
         }
 
         function hideNoteTooltip() {
             document.getElementById('noteTooltip').classList.remove('show');
+        }
+
+        // Inline note management
+        function createInlineNote(mark, highlightId, noteText) {
+            if (!noteText || !noteText.trim()) return;
+
+            // Remove existing inline note if any
+            removeInlineNote(highlightId);
+
+            const noteEl = document.createElement('div');
+            noteEl.className = 'inline-note';
+            noteEl.dataset.forHighlight = highlightId;
+            noteEl.innerHTML = `
+                <div class="inline-note-label">
+                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10z"/></svg>
+                    Note
+                </div>
+                <div class="inline-note-text">${escapeHtml(noteText)}</div>
+            `;
+
+            // Click on inline note scrolls to the highlight and opens popup
+            noteEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                scrollToElementAndHighlight(mark);
+                // Show the popup after scrolling
+                setTimeout(() => {
+                    showHighlightPopup({ stopPropagation: () => {}, target: mark }, highlightId);
+                }, 400);
+            });
+
+            // Insert after the mark element's parent block
+            // Find the closest block-level parent to insert after
+            let insertAfter = mark;
+            // Walk up to find the nearest block element (p, div, li, etc.)
+            let blockParent = mark.parentElement;
+            while (blockParent && !['P', 'DIV', 'SECTION', 'LI', 'BLOCKQUOTE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(blockParent.tagName)) {
+                blockParent = blockParent.parentElement;
+            }
+
+            if (blockParent && blockParent.parentElement) {
+                blockParent.parentElement.insertBefore(noteEl, blockParent.nextSibling);
+            } else {
+                // Fallback: insert right after the mark
+                mark.parentElement.insertBefore(noteEl, mark.nextSibling);
+            }
+        }
+
+        function removeInlineNote(highlightId) {
+            const existing = document.querySelector(`.inline-note[data-for-highlight="${highlightId}"]`);
+            if (existing) existing.remove();
+        }
+
+        function updateInlineNote(highlightId, noteText) {
+            const mark = document.querySelector(`mark[data-highlight-id="${highlightId}"]`);
+            if (!mark) return;
+
+            if (noteText && noteText.trim()) {
+                createInlineNote(mark, highlightId, noteText);
+            } else {
+                removeInlineNote(highlightId);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Copy highlight text to clipboard
@@ -1899,6 +2012,9 @@
                         }
                     }
 
+                    // Update inline note
+                    updateInlineNote(currentHighlightId, note);
+
                     document.getElementById('noteEditor').classList.remove('show');
                     hideHighlightPopup();
                 }
@@ -1917,6 +2033,9 @@
                 const result = await response.json();
 
                 if (result.success) {
+                    // Remove inline note
+                    removeInlineNote(currentHighlightId);
+
                     // Remove from DOM
                     const mark = document.querySelector(`[data-highlight-id="${currentHighlightId}"]`);
                     if (mark) {
@@ -1941,7 +2060,7 @@
         // Click outside to hide popups
         // Hide popups/toolbars when clicking/touching outside
         function handleOutsideInteraction(e) {
-            if (!e.target.closest('.highlight-popup') && !e.target.closest('.highlight')) {
+            if (!e.target.closest('.highlight-popup') && !e.target.closest('.highlight') && !e.target.closest('.inline-note') && !e.target.closest('.note-editor')) {
                 hideHighlightPopup();
             }
             // Don't hide undo toast here - it has its own auto-hide timer

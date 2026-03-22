@@ -157,6 +157,15 @@ async def serve_service_worker():
     )
 
 
+@app.get("/manifest.json")
+async def serve_manifest():
+    """Serve the PWA manifest."""
+    manifest_path = os.path.join("static", "manifest.json")
+    if not os.path.exists(manifest_path):
+        raise HTTPException(status_code=404, detail="Manifest not found")
+    return FileResponse(manifest_path, media_type="application/manifest+json")
+
+
 # --- Authentication Middleware ---
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -171,8 +180,10 @@ async def auth_middleware(request: Request, call_next):
     if path.startswith("/static/") or path.startswith("/reader/static/"):
         return await call_next(request)
 
-    # Allow Service Worker
+    # Allow Service Worker and manifest
     if path == "/sw.js" or path == "/reader/sw.js":
+        return await call_next(request)
+    if path == "/manifest.json" or path == "/reader/manifest.json":
         return await call_next(request)
 
     # Allow book images (served from /read/{book_id}/images/ or /reader/read/{book_id}/images/)
