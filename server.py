@@ -368,7 +368,7 @@ def export_to_obsidian_markdown() -> str:
     return "\n".join(lines)
 
 
-@lru_cache(maxsize=10)
+@lru_cache(maxsize=32)
 def load_book_cached(folder_name: str) -> Optional[Book]:
     """
     Loads the book from the pickle file.
@@ -460,12 +460,12 @@ def find_cover_image(book, book_id: str) -> str | None:
 
     for pattern in cover_patterns:
         if pattern in book.images:
-            return f"/books/{book_id}/images/{book.images[pattern]}"
+            return f"/read/{book_id}/images/{book.images[pattern]}"
 
     # Also check for keys containing 'cover'
     for key, value in book.images.items():
         if 'cover' in key.lower():
-            return f"/books/{book_id}/images/{value}"
+            return f"/read/{book_id}/images/{value}"
 
     return None
 

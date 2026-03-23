@@ -13,9 +13,9 @@
     <link rel="stylesheet" href="{{ root_path }}/static/app.css">
     <style>
         .container {
-            max-width: 1000px;
+            max-width: 1100px;
             margin: 0 auto;
-            padding: var(--space-8) var(--space-5);
+            padding: 40px 32px 80px;
             overflow-x: hidden;
         }
 
@@ -24,29 +24,255 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: var(--space-7);
-            gap: var(--space-3);
-            flex-wrap: wrap;
+            margin-bottom: 48px;
+            gap: 16px;
         }
 
         .header h1 {
-            font-size: 1.75rem;
+            font-size: 2rem;
             font-weight: 700;
-            letter-spacing: -0.03em;
+            letter-spacing: -0.04em;
             color: var(--text-primary);
         }
 
         .header-actions {
             display: flex;
-            gap: var(--space-2);
+            gap: 8px;
             align-items: center;
-            flex-wrap: wrap;
         }
 
-        /* Add Book Section (bottom of page) */
+        /* Tag Section */
+        .book-list {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .tag-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            user-select: none;
+            margin-bottom: 16px;
+            padding: 4px 0;
+        }
+        .tag-header:hover .tag-title {
+            color: var(--text-primary);
+        }
+
+        .tag-icon {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            transition: transform 0.2s ease;
+            width: 12px;
+        }
+        .tag-section.collapsed .tag-icon {
+            transform: rotate(-90deg);
+        }
+
+        .tag-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            transition: color 0.2s ease;
+        }
+
+        .tag-count {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            opacity: 0.6;
+        }
+
+        .tag-books {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 24px;
+            content-visibility: auto;
+            contain-intrinsic-size: auto 300px;
+        }
+        .tag-section.collapsed .tag-books {
+            display: none;
+        }
+
+        /* Book Card — cover-first vertical layout */
+        .book-card {
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+            group: book;
+        }
+        .book-card:hover .book-cover {
+            transform: translateY(-3px);
+        }
+
+        /* Cover */
+        .book-cover {
+            width: 100%;
+            aspect-ratio: 2 / 3;
+            border-radius: 6px;
+            overflow: hidden;
+            background: linear-gradient(145deg, var(--bg-surface), var(--border-subtle));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: transform 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            will-change: transform;
+            contain: layout style paint;
+        }
+        body.dark-mode .book-cover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+        }
+
+        .book-cover-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .book-cover-fallback {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            opacity: 0.25;
+            text-transform: uppercase;
+        }
+
+        /* Progress bar on bottom of cover */
+        .cover-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: rgba(0,0,0,0.1);
+        }
+        body.dark-mode .cover-progress {
+            background: rgba(255,255,255,0.1);
+        }
+        .cover-progress-fill {
+            height: 100%;
+            background: var(--accent-primary);
+            border-radius: 0 2px 0 0;
+            transition: width 0.4s ease;
+        }
+
+        /* Book meta below cover */
+        .book-meta {
+            padding: 10px 2px 0;
+        }
+        .book-title {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 2px;
+        }
+        .book-author {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Hover overlay with actions */
+        .book-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-radius: 0 0 6px 6px;
+            background: rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 6px 8px;
+            gap: 4px;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .book-card:hover .book-overlay {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .overlay-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: rgba(0,0,0,0.45);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease;
+        }
+        .overlay-btn:hover {
+            background: rgba(0,0,0,0.65);
+        }
+        .overlay-btn.danger:hover {
+            background: rgba(220, 38, 38, 0.7);
+        }
+        .overlay-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .book-completed-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: rgba(0,0,0,0.45);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease;
+            position: relative;
+        }
+        .book-completed-checkbox:hover {
+            background: rgba(0,0,0,0.65);
+        }
+        .book-completed-checkbox:checked {
+            background: rgba(34, 197, 94, 0.7);
+        }
+        .book-completed-checkbox:checked::after {
+            content: '✓';
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        /* Completed section faded */
+        .tag-section.completed-section .book-cover {
+            opacity: 0.55;
+        }
+        .tag-section.completed-section .book-card:hover .book-cover {
+            opacity: 1;
+        }
+
+        /* Add Book Section */
         .add-book-section {
-            margin-top: 32px;
-            padding-top: 24px;
+            margin-top: 48px;
+            padding-top: 32px;
             border-top: 1px solid var(--border-subtle);
             text-align: center;
         }
@@ -54,9 +280,8 @@
         .add-book-btn {
             display: inline-flex;
             align-items: center;
-            justify-content: center;
             gap: 6px;
-            padding: 8px 16px;
+            padding: 10px 20px;
             font-size: 0.875rem;
             font-weight: 500;
             color: var(--text-muted);
@@ -64,29 +289,26 @@
             border: 1px dashed var(--border-medium);
             border-radius: var(--radius-sm);
             cursor: pointer;
-            transition: all var(--transition);
+            transition: all 0.2s ease;
         }
         .add-book-btn:hover {
             color: var(--accent-primary);
             border-color: var(--accent-primary);
             background: var(--accent-light);
         }
-        .add-book-btn svg {
-            width: 16px;
-            height: 16px;
-        }
+        .add-book-btn svg { width: 16px; height: 16px; }
 
         .dropzone {
             display: none;
             border: 2px dashed var(--border-medium);
             border-radius: var(--radius-md);
-            padding: var(--space-7) var(--space-5);
+            padding: 48px 24px;
             text-align: center;
             cursor: pointer;
-            transition: all var(--transition);
+            transition: all 0.2s ease;
             color: var(--text-muted);
             font-size: 0.9375rem;
-            margin-top: var(--space-4);
+            margin-top: 16px;
             background: var(--bg-surface);
         }
         .dropzone.show { display: block; }
@@ -110,245 +332,7 @@
         }
         .upload-status.error { color: #dc2626; }
 
-        /* Book List */
-        .book-list {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-5);
-        }
-
-        /* Tag Section */
-        .tag-section { }
-
-        .tag-header {
-            display: flex;
-            align-items: center;
-            gap: var(--space-2);
-            padding: 0;
-            cursor: pointer;
-            user-select: none;
-            margin-bottom: var(--space-2);
-        }
-        .tag-header:hover .tag-title {
-            color: var(--accent-primary);
-        }
-
-        .tag-icon {
-            font-size: 0.5rem;
-            color: var(--text-muted);
-            transition: transform var(--transition);
-        }
-        .tag-section.collapsed .tag-icon {
-            transform: rotate(-90deg);
-        }
-
-        .tag-title {
-            font-size: 0.6875rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-muted);
-            transition: color var(--transition);
-        }
-
-        .tag-count {
-            display: none;
-        }
-
-        .tag-books {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: var(--space-2);
-        }
-        .tag-section.collapsed .tag-books {
-            display: none;
-        }
-
-        /* Book Row (Card) */
-        .book-row {
-            display: flex;
-            align-items: center;
-            gap: var(--space-4);
-            padding: var(--space-4);
-            background: var(--bg-card);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            text-decoration: none;
-            transition: all var(--ease) 0.2s;
-            position: relative;
-        }
-        .book-row:hover {
-            border-color: var(--border-medium);
-            box-shadow: var(--shadow-md);
-            transform: translateY(-1px);
-        }
-
-        /* Book Cover */
-        .book-cover-container {
-            width: 48px;
-            height: 68px;
-            border-radius: 4px;
-            overflow: hidden;
-            flex-shrink: 0;
-            background: linear-gradient(135deg, var(--accent-light), var(--bg-surface));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-
-        .book-cover-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .book-cover-fallback {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--accent-primary);
-            opacity: 0.5;
-        }
-
-        .book-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .book-title {
-            font-size: 0.9375rem;
-            font-weight: 500;
-            color: var(--text-primary);
-            line-height: 1.4;
-            margin-bottom: 2px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .book-author {
-            font-size: 0.8125rem;
-            color: var(--text-muted);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .book-progress {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-shrink: 0;
-        }
-
-        .progress-track {
-            width: 64px;
-            height: 4px;
-            background: var(--border-subtle);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: var(--accent-primary);
-            border-radius: 2px;
-            transition: width 0.5s var(--ease);
-        }
-
-        .progress-text {
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            min-width: 32px;
-            text-align: right;
-        }
-
-        /* Secondary actions - hidden by default, shown on hover */
-        .book-actions {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            opacity: 0;
-            width: 0;
-            overflow: hidden;
-            transition: opacity var(--transition), width var(--transition);
-            flex-shrink: 0;
-        }
-        .book-row:hover .book-actions {
-            opacity: 1;
-            width: auto;
-            overflow: visible;
-        }
-
-        .book-tags-btn {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            padding: 4px 8px;
-            border-radius: var(--radius-sm);
-            transition: all var(--transition);
-            background: transparent;
-            border: none;
-            cursor: pointer;
-        }
-        .book-tags-btn:hover {
-            background: var(--border-subtle);
-            color: var(--text-primary);
-        }
-
-        /* Delete Button */
-        .book-delete-btn {
-            background: transparent;
-            border: none;
-            padding: 4px;
-            cursor: pointer;
-            color: var(--text-muted);
-            border-radius: var(--radius-sm);
-            transition: all var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .book-delete-btn:hover {
-            background: #fee2e2;
-            color: #dc2626;
-        }
-        body.dark-mode .book-delete-btn:hover {
-            background: #450a0a;
-            color: #f87171;
-        }
-
-        /* Offline Download Button */
-        .book-offline-btn {
-            background: transparent;
-            border: none;
-            padding: 4px;
-            cursor: pointer;
-            color: var(--text-muted);
-            border-radius: var(--radius-sm);
-            transition: all var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-        }
-        .book-offline-btn:hover {
-            background: var(--accent-light);
-            color: var(--accent-primary);
-        }
-        .book-offline-btn.downloaded {
-            color: var(--accent-primary);
-        }
-        .book-offline-btn.downloading {
-            color: #f59e0b;
-            animation: pulse 1s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        /* Offline status badge in header */
+        /* Offline status */
         .offline-status {
             font-size: 0.75rem;
             padding: 4px 10px;
@@ -361,7 +345,6 @@
         body.dark-mode .offline-status.online { background: #14532d; color: #86efac; }
         body.dark-mode .offline-status.offline { background: #451a03; color: #fcd34d; }
 
-        /* Storage usage indicator */
         .storage-usage {
             font-size: 0.7rem;
             padding: 3px 8px;
@@ -369,7 +352,7 @@
             background: var(--border-subtle);
             color: var(--text-muted);
             cursor: pointer;
-            transition: all var(--transition);
+            transition: all 0.2s ease;
         }
         .storage-usage:hover {
             background: var(--bg-card-hover);
@@ -380,32 +363,13 @@
             color: var(--accent-primary);
         }
 
-        /* Completed Checkbox */
-        .book-completed-checkbox {
-            width: 16px;
-            height: 16px;
-            cursor: pointer;
-            accent-color: var(--accent-primary);
-            flex-shrink: 0;
-        }
-
-        /* Completed section styling */
-        .tag-section.completed-section .book-row {
-            opacity: 0.6;
-        }
-        .tag-section.completed-section .book-row:hover {
-            opacity: 1;
-        }
-
         /* Empty State */
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
+            padding: 80px 20px;
             color: var(--text-muted);
         }
-        .empty-state p {
-            font-size: 0.9375rem;
-        }
+        .empty-state p { font-size: 1rem; }
 
         /* Modal */
         .modal {
@@ -413,7 +377,7 @@
             position: fixed;
             inset: 0;
             z-index: 1000;
-            background: rgba(0,0,0,0.4);
+            background: rgba(0,0,0,0.5);
             backdrop-filter: blur(4px);
         }
         .modal.show {
@@ -425,10 +389,13 @@
         .modal-content {
             background: var(--bg-card);
             padding: 28px;
-            border-radius: var(--radius-md);
+            border-radius: var(--radius-lg);
             max-width: 420px;
             width: 90%;
-            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        body.dark-mode .modal-content {
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
         }
 
         .modal-title {
@@ -437,13 +404,11 @@
             color: var(--text-primary);
             margin-bottom: 4px;
         }
-
         .modal-subtitle {
             font-size: 0.875rem;
             color: var(--text-muted);
             margin-bottom: 20px;
         }
-
         .modal-input {
             width: 100%;
             padding: 10px 14px;
@@ -452,20 +417,18 @@
             font-size: 0.9375rem;
             background: var(--bg-main);
             color: var(--text-primary);
-            transition: border-color var(--transition);
+            transition: border-color 0.2s ease;
         }
         .modal-input:focus {
             outline: none;
             border-color: var(--accent-primary);
         }
-
         .modal-actions {
             display: flex;
             gap: 10px;
             justify-content: flex-end;
             margin-top: 20px;
         }
-
         .modal-btn {
             padding: 8px 18px;
             border: none;
@@ -473,27 +436,24 @@
             font-size: 0.875rem;
             font-weight: 500;
             cursor: pointer;
-            transition: all var(--transition);
+            transition: all 0.2s ease;
         }
         .modal-btn-cancel {
             background: var(--border-subtle);
             color: var(--text-primary);
         }
-        .modal-btn-cancel:hover {
-            background: var(--border-medium);
-        }
+        .modal-btn-cancel:hover { background: var(--border-medium); }
         .modal-btn-save {
             background: var(--accent-primary);
             color: white;
         }
-        .modal-btn-save:hover {
-            background: var(--accent-hover);
+        .modal-btn-save:hover { background: var(--accent-hover); }
+        .modal-btn-danger {
+            background: #dc2626;
+            color: white;
         }
+        .modal-btn-danger:hover { background: #b91c1c; }
 
-        /* Delete Modal */
-        .delete-modal {
-            max-width: 400px;
-        }
         .delete-warning {
             color: var(--text-muted);
             margin: 12px 0;
@@ -505,18 +465,9 @@
             color: var(--text-muted);
             font-size: 0.9rem;
         }
-        .delete-list li {
-            margin: 4px 0;
-        }
-        .modal-btn-danger {
-            background: #dc2626;
-            color: white;
-        }
-        .modal-btn-danger:hover {
-            background: #b91c1c;
-        }
+        .delete-list li { margin: 4px 0; }
 
-        /* Tag Suggestions Pills */
+        /* Tag Suggestions */
         .tag-suggestions {
             display: flex;
             flex-wrap: wrap;
@@ -525,9 +476,7 @@
             max-height: 120px;
             overflow-y: auto;
         }
-        .tag-suggestions:empty {
-            display: none;
-        }
+        .tag-suggestions:empty { display: none; }
         .tag-suggestions-label {
             width: 100%;
             font-size: 0.75rem;
@@ -539,12 +488,12 @@
             align-items: center;
             padding: 4px 12px;
             font-size: 0.8rem;
-            background: var(--bg-tertiary);
+            background: var(--bg-surface);
             color: var(--text-secondary);
             border: 1px solid var(--border-subtle);
             border-radius: 20px;
             cursor: pointer;
-            transition: all var(--transition);
+            transition: all 0.2s ease;
         }
         .tag-pill:hover {
             background: var(--accent-primary);
@@ -553,43 +502,40 @@
         }
 
         /* Responsive */
-        @media (max-width: 640px) {
-            .container {
-                padding: var(--space-5) var(--space-4);
-            }
+        @media (max-width: 768px) {
+            .container { padding: 24px 16px 60px; }
+            .header { margin-bottom: 32px; }
+            .header h1 { font-size: 1.5rem; }
             .tag-books {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+                gap: 16px;
             }
-            .header {
-                flex-wrap: wrap;
-                gap: var(--space-3);
-            }
-            .header h1 {
-                font-size: 1.5rem;
-            }
-            .header-actions {
-                flex-wrap: wrap;
-                gap: var(--space-2);
-            }
-            /* Always show actions on mobile (no hover) */
-            .book-actions {
+            /* Always show overlay on touch devices */
+            .book-overlay {
                 opacity: 1;
-                width: auto;
-                overflow: visible;
+                pointer-events: auto;
             }
-            /* Stack book row vertically on small screens */
-            .book-row {
-                flex-wrap: wrap;
-                gap: var(--space-3);
+        }
+
+        @media (max-width: 480px) {
+            .tag-books {
+                grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+                gap: 12px;
             }
-            .book-progress {
-                width: 100%;
-                justify-content: flex-start;
-            }
-            .progress-track {
-                flex: 1;
-                max-width: 120px;
-            }
+            .book-title { font-size: 0.75rem; }
+            .book-author { font-size: 0.6875rem; }
+        }
+
+        /* Book offline button states */
+        .overlay-btn.downloaded {
+            background: rgba(34, 197, 94, 0.6);
+        }
+        .overlay-btn.downloading {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
     </style>
     <script src="{{ root_path }}/static/theme-toggle.js"></script>
@@ -602,7 +548,7 @@
             <div class="header-actions">
                 <span class="storage-usage" id="storageUsage" title="Offline storage usage" onclick="showStorageDetails()">--</span>
                 <span class="offline-status" id="offlineStatus">●</span>
-                <a href="{{ root_path }}/highlights" class="btn btn-primary">Highlights</a>
+                <a href="{{ root_path }}/highlights" class="btn btn-secondary" style="font-size:0.8125rem;">Highlights</a>
                 <button class="btn btn-ghost" id="themeToggle" onclick="toggleDarkMode()" title="Toggle dark mode">
                     <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" id="themeIcon">
                         <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"></path>
@@ -635,6 +581,40 @@
             {% endfor %}
 
             <div class="book-list">
+                {% macro book_card(book) %}
+                <a href="{{ root_path }}/read/{{ book.id }}/{{ book.last_chapter }}" class="book-card">
+                    <div class="book-cover">
+                        {% if book.cover_image %}
+                            <img class="book-cover-img" src="{{ root_path }}{{ book.cover_image }}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                            <span class="book-cover-fallback" style="display:none">{{ book.title[0] }}</span>
+                        {% else %}
+                            <span class="book-cover-fallback">{{ book.title[0] }}</span>
+                        {% endif %}
+                        {% if book.progress > 0 %}
+                        <div class="cover-progress">
+                            <div class="cover-progress-fill" style="width: {{ book.progress }}%"></div>
+                        </div>
+                        {% endif %}
+                        <div class="book-overlay" onclick="event.stopPropagation(); event.preventDefault();">
+                            <button class="overlay-btn book-offline-btn" data-book-id="{{ book.id }}" onclick="event.stopPropagation(); event.preventDefault(); toggleOfflineDownload('{{ book.id }}', this)" title="Download for offline">
+                                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+                            </button>
+                            <button class="overlay-btn" onclick="event.stopPropagation(); event.preventDefault(); openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title | replace("'", "\\'") }}')" title="Edit tags">
+                                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2v4.586l7 7L14.586 9l-7-7H3zM2 2a1 1 0 0 1 1-1h4.586a1 1 0 0 1 .707.293l7 7a1 1 0 0 1 0 1.414l-4.586 4.586a1 1 0 0 1-1.414 0l-7-7A1 1 0 0 1 2 6.586V2z"/><path d="M5.5 5a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1zm0 1a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>
+                            </button>
+                            <button class="overlay-btn danger" onclick="event.stopPropagation(); event.preventDefault(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
+                                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+                            </button>
+                            <input type="checkbox" class="book-completed-checkbox" title="{{ 'Mark as not completed' if book.completed else 'Mark as completed' }}" onclick="event.stopPropagation(); toggleCompleted('{{ book.id }}', this)" {% if book.completed %}checked{% endif %}>
+                        </div>
+                    </div>
+                    <div class="book-meta">
+                        <div class="book-title">{{ book.title }}</div>
+                        <div class="book-author">{{ book.author }}</div>
+                    </div>
+                </a>
+                {% endmacro %}
+
                 {% for tag in all_tags %}
                     {% if tag in books_by_tag %}
                     <div class="tag-section" data-tag="{{ tag }}">
@@ -645,34 +625,7 @@
                         </div>
                         <div class="tag-books">
                             {% for book in books_by_tag[tag] %}
-                            <a href="{{ root_path }}/read/{{ book.id }}/{{ book.last_chapter }}" class="book-row">
-                                <div class="book-cover-container">
-                                    {% if book.cover_image %}
-                                        <img class="book-cover-img" src="{{ root_path }}{{ book.cover_image }}" alt="" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-                                        <span class="book-cover-fallback" style="display:none">{{ book.title[0] }}</span>
-                                    {% else %}
-                                        <span class="book-cover-fallback">{{ book.title[0] }}</span>
-                                    {% endif %}
-                                </div>
-                                <div class="book-info">
-                                    <div class="book-title">{{ book.title }}</div>
-                                    <div class="book-author">{{ book.author }}</div>
-                                </div>
-                                <div class="book-progress">
-                                    <div class="progress-track"><div class="progress-fill" style="width: {{ book.progress }}%"></div></div>
-                                    <span class="progress-text">{{ book.progress|int }}%</span>
-                                </div>
-                                <div class="book-actions" onclick="event.stopPropagation(); event.preventDefault();">
-                                    <button class="book-offline-btn" data-book-id="{{ book.id }}" onclick="event.stopPropagation(); event.preventDefault(); toggleOfflineDownload('{{ book.id }}', this)" title="Download for offline">
-                                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
-                                    </button>
-                                    <button class="book-tags-btn" onclick="event.stopPropagation(); event.preventDefault(); openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
-                                    <button class="book-delete-btn" onclick="event.stopPropagation(); event.preventDefault(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
-                                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
-                                    </button>
-                                    <input type="checkbox" class="book-completed-checkbox" title="Mark as completed" onclick="event.stopPropagation(); toggleCompleted('{{ book.id }}', this)" {% if book.completed %}checked{% endif %}>
-                                </div>
-                            </a>
+                                {{ book_card(book) }}
                             {% endfor %}
                         </div>
                     </div>
@@ -688,34 +641,7 @@
                     </div>
                     <div class="tag-books">
                         {% for book in untagged_books %}
-                        <a href="{{ root_path }}/read/{{ book.id }}/{{ book.last_chapter }}" class="book-row">
-                            <div class="book-cover-container">
-                                {% if book.cover_image %}
-                                    <img class="book-cover-img" src="{{ root_path }}{{ book.cover_image }}" alt="" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-                                    <span class="book-cover-fallback" style="display:none">{{ book.title[0] }}</span>
-                                {% else %}
-                                    <span class="book-cover-fallback">{{ book.title[0] }}</span>
-                                {% endif %}
-                            </div>
-                            <div class="book-info">
-                                <div class="book-title">{{ book.title }}</div>
-                                <div class="book-author">{{ book.author }}</div>
-                            </div>
-                            <div class="book-progress">
-                                <div class="progress-track"><div class="progress-fill" style="width: {{ book.progress }}%"></div></div>
-                                <span class="progress-text">{{ book.progress|int }}%</span>
-                            </div>
-                            <div class="book-actions" onclick="event.stopPropagation(); event.preventDefault();">
-                                <button class="book-offline-btn" data-book-id="{{ book.id }}" onclick="event.stopPropagation(); event.preventDefault(); toggleOfflineDownload('{{ book.id }}', this)" title="Download for offline">
-                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
-                                </button>
-                                <button class="book-tags-btn" onclick="event.stopPropagation(); event.preventDefault(); openTagEditor('{{ book.id }}', '', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
-                                <button class="book-delete-btn" onclick="event.stopPropagation(); event.preventDefault(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
-                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
-                                </button>
-                                <input type="checkbox" class="book-completed-checkbox" title="Mark as completed" onclick="event.stopPropagation(); toggleCompleted('{{ book.id }}', this)" {% if book.completed %}checked{% endif %}>
-                            </div>
-                        </a>
+                            {{ book_card(book) }}
                         {% endfor %}
                     </div>
                 </div>
@@ -730,34 +656,7 @@
                     </div>
                     <div class="tag-books">
                         {% for book in completed_books %}
-                        <a href="{{ root_path }}/read/{{ book.id }}/{{ book.last_chapter }}" class="book-row">
-                            <div class="book-cover-container">
-                                {% if book.cover_image %}
-                                    <img class="book-cover-img" src="{{ root_path }}{{ book.cover_image }}" alt="" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-                                    <span class="book-cover-fallback" style="display:none">{{ book.title[0] }}</span>
-                                {% else %}
-                                    <span class="book-cover-fallback">{{ book.title[0] }}</span>
-                                {% endif %}
-                            </div>
-                            <div class="book-info">
-                                <div class="book-title">{{ book.title }}</div>
-                                <div class="book-author">{{ book.author }}</div>
-                            </div>
-                            <div class="book-progress">
-                                <div class="progress-track"><div class="progress-fill" style="width: {{ book.progress }}%"></div></div>
-                                <span class="progress-text">{{ book.progress|int }}%</span>
-                            </div>
-                            <div class="book-actions" onclick="event.stopPropagation(); event.preventDefault();">
-                                <button class="book-offline-btn" data-book-id="{{ book.id }}" onclick="event.stopPropagation(); event.preventDefault(); toggleOfflineDownload('{{ book.id }}', this)" title="Download for offline">
-                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
-                                </button>
-                                <button class="book-tags-btn" onclick="event.stopPropagation(); event.preventDefault(); openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title | replace("'", "\\'") }}')">Tags</button>
-                                <button class="book-delete-btn" onclick="event.stopPropagation(); event.preventDefault(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
-                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
-                                </button>
-                                <input type="checkbox" class="book-completed-checkbox" title="Mark as not completed" onclick="event.stopPropagation(); toggleCompleted('{{ book.id }}', this)" checked>
-                            </div>
-                        </a>
+                            {{ book_card(book) }}
                         {% endfor %}
                     </div>
                 </div>
@@ -838,13 +737,11 @@
             });
         }
 
-        // Theme functions loaded from /static/theme-toggle.js
         restoreCollapsedState();
 
         let currentBookId = null;
         let allExistingTags = [];
 
-        // Fetch all existing tags on page load
         async function loadExistingTags() {
             try {
                 const res = await fetch(`{{ root_path }}/api/tags`);
@@ -861,20 +758,9 @@
         function renderTagSuggestions(currentTags) {
             const container = document.getElementById('tagSuggestions');
             const currentTagList = currentTags.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
-
-            // Clear previous pills (keep the label)
             container.innerHTML = '<span class="tag-suggestions-label">Existing tags:</span>';
-
-            // Filter out tags already in input
-            const suggestions = allExistingTags.filter(tag =>
-                !currentTagList.includes(tag.toLowerCase())
-            );
-
-            if (suggestions.length === 0) {
-                container.innerHTML = '';
-                return;
-            }
-
+            const suggestions = allExistingTags.filter(tag => !currentTagList.includes(tag.toLowerCase()));
+            if (suggestions.length === 0) { container.innerHTML = ''; return; }
             suggestions.forEach(tag => {
                 const pill = document.createElement('button');
                 pill.type = 'button';
@@ -888,12 +774,10 @@
         function addTagFromPill(tag) {
             const input = document.getElementById('tagInput');
             const currentTags = input.value.split(',').map(t => t.trim()).filter(t => t);
-
             if (!currentTags.map(t => t.toLowerCase()).includes(tag.toLowerCase())) {
                 currentTags.push(tag);
                 input.value = currentTags.join(', ');
             }
-
             renderTagSuggestions(input.value);
             input.focus();
         }
@@ -922,17 +806,12 @@
             } catch (err) { alert(`Failed: ${err.message}`); }
         }
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTagEditor(); });
-
-        // These event listeners are attached after DOM is ready (elements are below this script)
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('tagModal')?.addEventListener('click', (e) => { if (e.target.id === 'tagModal') closeTagEditor(); });
-            document.getElementById('tagInput')?.addEventListener('input', (e) => {
-                renderTagSuggestions(e.target.value);
-            });
+            document.getElementById('tagInput')?.addEventListener('input', (e) => { renderTagSuggestions(e.target.value); });
         });
 
         async function toggleCompleted(bookId, checkbox) {
-            // checkbox.checked already reflects the new state after user clicked
             const newCompleted = checkbox.checked;
             try {
                 const res = await fetch(`{{ root_path }}/api/books/${bookId}/completed`, {
@@ -968,7 +847,7 @@
 
     <!-- Delete Confirmation Modal -->
     <div id="deleteModal" class="modal">
-        <div class="modal-content delete-modal">
+        <div class="modal-content">
             <h2 class="modal-title">Delete Book</h2>
             <p class="modal-subtitle">Delete "<span id="deleteBookTitle"></span>"?</p>
             <p class="delete-warning">
@@ -1003,18 +882,12 @@
 
         async function confirmDelete() {
             if (!deleteBookId) return;
-
             const deleteBtn = document.querySelector('.modal-btn-danger');
             deleteBtn.textContent = 'Deleting...';
             deleteBtn.disabled = true;
-
             try {
-                const response = await fetch(`{{ root_path }}/api/books/${deleteBookId}`, {
-                    method: 'DELETE'
-                });
-
+                const response = await fetch(`{{ root_path }}/api/books/${deleteBookId}`, { method: 'DELETE' });
                 const result = await response.json();
-
                 if (result.success) {
                     closeDeleteModal();
                     window.location.reload();
@@ -1025,13 +898,11 @@
                 }
             } catch (error) {
                 alert('Failed to delete book. Please try again.');
-                console.error('Delete error:', error);
                 deleteBtn.textContent = 'Delete';
                 deleteBtn.disabled = false;
             }
         }
 
-        // Close delete modal on backdrop click
         document.getElementById('deleteModal').addEventListener('click', (e) => {
             if (e.target.id === 'deleteModal') closeDeleteModal();
         });
@@ -1039,14 +910,12 @@
 
     <!-- Offline Support -->
     <script>
-        // Register Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('{{ root_path }}/sw.js', { scope: '{{ root_path }}/' })
                 .then(reg => console.log('[Offline] Service Worker registered'))
                 .catch(err => console.error('[Offline] SW registration failed:', err));
         }
 
-        // Update online/offline status
         function updateOnlineStatus() {
             const el = document.getElementById('offlineStatus');
             if (navigator.onLine) {
@@ -1061,17 +930,13 @@
         window.addEventListener('offline', updateOnlineStatus);
         updateOnlineStatus();
 
-        // Sync when coming back online
         window.addEventListener('online', async () => {
             if (window.OfflineDB) {
                 const result = await window.OfflineDB.flushOutbox();
-                if (result.success > 0) {
-                    console.log(`[Offline] Synced ${result.success} items`);
-                }
+                if (result.success > 0) console.log(`[Offline] Synced ${result.success} items`);
             }
         });
 
-        // Update storage usage display
         async function updateStorageUsage() {
             if (!window.OfflineDB) return;
             const el = document.getElementById('storageUsage');
@@ -1084,41 +949,30 @@
                     el.textContent = '📦 No offline data';
                     el.classList.remove('has-data');
                 }
-            } catch (e) {
-                el.textContent = '📦 --';
-            }
+            } catch (e) { el.textContent = '📦 --'; }
         }
 
         function showStorageDetails() {
             if (!window.OfflineDB) return;
             window.OfflineDB.getStorageUsage().then(usage => {
-                const details = [
-                    `Offline Storage Usage`,
-                    `---`,
+                alert([
+                    `Offline Storage Usage`, `---`,
                     `Books: ${usage.bookCount}`,
                     `Chapters: ${window.OfflineDB.formatBytes(usage.chapters)}`,
                     `Images: ${window.OfflineDB.formatBytes(usage.images)}`,
                     `Metadata: ${window.OfflineDB.formatBytes(usage.books)}`,
-                    `---`,
-                    `Total: ${window.OfflineDB.formatBytes(usage.total)}`,
-                    ``,
+                    `---`, `Total: ${window.OfflineDB.formatBytes(usage.total)}`, ``,
                     `Books expire after ${(window.OfflineDB.TTL_MS / 1000 / 60 / 60 / 24).toFixed(0)} days.`,
                     `Max ${window.OfflineDB.MAX_BOOKS} books stored (LRU eviction).`
-                ].join('\n');
-                alert(details);
+                ].join('\n'));
             });
         }
 
-        // Mark downloaded books on page load
         async function markDownloadedBooks() {
             if (!window.OfflineDB) return;
-
-            // Run cleanup first (TTL + LRU)
             await window.OfflineDB.runCleanup();
-
             const downloadedBooks = await window.OfflineDB.getDownloadedBooks();
             const downloadedIds = new Set(downloadedBooks.map(b => b.book_id));
-
             document.querySelectorAll('.book-offline-btn').forEach(btn => {
                 const bookId = btn.dataset.bookId;
                 if (downloadedIds.has(bookId)) {
@@ -1127,23 +981,14 @@
                     btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/></svg>';
                 }
             });
-
-            // Update storage usage after marking books
             await updateStorageUsage();
         }
         markDownloadedBooks();
 
-        // Toggle offline download
         async function toggleOfflineDownload(bookId, btn) {
-            if (!window.OfflineDB) {
-                alert('Offline storage not available');
-                return;
-            }
-
+            if (!window.OfflineDB) { alert('Offline storage not available'); return; }
             const isDownloaded = await window.OfflineDB.isBookDownloaded(bookId);
-
             if (isDownloaded) {
-                // Remove download
                 if (confirm('Remove offline download?')) {
                     await window.OfflineDB.removeDownloadedBook(bookId);
                     btn.classList.remove('downloaded');
@@ -1152,26 +997,18 @@
                     await updateStorageUsage();
                 }
             } else {
-                // Download
                 btn.classList.add('downloading');
                 btn.title = 'Downloading...';
                 btn.innerHTML = '⏳';
-
                 try {
-                    await window.OfflineDB.downloadBook(bookId, (completed, total) => {
-                        btn.innerHTML = `${completed}/${total}`;
-                    });
-
+                    await window.OfflineDB.downloadBook(bookId, (completed, total) => { btn.innerHTML = `${completed}/${total}`; });
                     btn.classList.remove('downloading');
                     btn.classList.add('downloaded');
                     btn.title = 'Downloaded for offline (click to remove)';
                     btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/></svg>';
-
-                    // Refresh UI to update other buttons if LRU eviction happened
                     markDownloadedBooks();
                     await updateStorageUsage();
                 } catch (err) {
-                    console.error('[Offline] Download failed:', err);
                     btn.classList.remove('downloading');
                     btn.title = 'Download failed - click to retry';
                     btn.innerHTML = '❌';
