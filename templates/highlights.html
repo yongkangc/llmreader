@@ -58,6 +58,62 @@
         align-items: center;
     }
 
+    .bulk-toolbar {
+        display: none;
+        position: sticky;
+        top: 84px;
+        z-index: 19;
+        margin-bottom: var(--space-5);
+        padding: var(--space-3);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        background: var(--bg-card);
+        box-shadow: var(--shadow-sm);
+        gap: var(--space-3);
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .bulk-toolbar.show {
+        display: flex;
+    }
+
+    .bulk-count {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: 999px;
+        padding: 6px 10px;
+        white-space: nowrap;
+    }
+
+    .bulk-toolbar input {
+        flex: 1 1 220px;
+        min-width: 180px;
+        padding: 10px 12px;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        background: var(--bg-main);
+        color: var(--text-primary);
+        font-family: var(--font-sans);
+        font-size: 0.875rem;
+    }
+
+    .bulk-toolbar input:focus {
+        outline: none;
+        border-color: var(--accent-primary);
+    }
+
+    .btn-danger {
+        background: rgba(220, 53, 69, 0.12);
+        color: #dc3545;
+    }
+    .btn-danger:hover {
+        background: rgba(220, 53, 69, 0.18);
+    }
+
     .btn {
         display: inline-flex;
         align-items: center;
@@ -197,10 +253,37 @@
         border-radius: var(--radius-sm);
         border-left: 3px solid var(--highlight-border, #eab308);
         margin-bottom: var(--space-3);
-        transition: background var(--transition);
+        transition: background var(--transition), box-shadow var(--transition), border-color var(--transition);
     }
     .highlight-item:last-child { margin-bottom: 0; }
     .highlight-item:hover { background: var(--bg-card-hover); }
+    .highlight-item.selected {
+        border-left-color: var(--accent-primary);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-primary) 24%, transparent);
+        background: color-mix(in srgb, var(--accent-light) 50%, var(--bg-surface) 50%);
+    }
+
+    .highlight-item-head {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: var(--space-2);
+    }
+
+    .highlight-select {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        cursor: pointer;
+    }
+
+    .highlight-select-checkbox {
+        accent-color: var(--accent-primary);
+    }
 
     .highlight-text {
         font-size: 0.9375rem;
@@ -228,6 +311,26 @@
         font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
+    }
+
+    .highlight-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: var(--space-3);
+    }
+
+    .highlight-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: var(--bg-main);
+        color: var(--accent-primary);
+        border: 1px solid var(--border-subtle);
+        font-size: 0.75rem;
+        font-weight: 600;
+        line-height: 1;
     }
 
     .highlight-footer {
@@ -263,6 +366,9 @@
         }
         .header h1 { font-size: 1.5rem; }
         .header-actions { width: 100%; }
+        .bulk-toolbar {
+            top: 132px;
+        }
         .book-header {
             flex-direction: column;
             padding: var(--space-4);
@@ -292,6 +398,15 @@
             </div>
         </header>
 
+        <div class="bulk-toolbar" id="bulkToolbar">
+            <span class="bulk-count" id="bulkCount">0 selected highlights</span>
+            <input id="bulkTagInput" type="text" list="highlightTagSuggestions" placeholder="Add tags (comma separated)">
+            <button class="btn btn-primary" onclick="applyBulkTags()">Add tags</button>
+            <button class="btn btn-danger" onclick="deleteSelectedHighlights()">Delete selected</button>
+            <button class="btn btn-secondary" onclick="clearSelectedHighlights()">Clear</button>
+        </div>
+        <datalist id="highlightTagSuggestions"></datalist>
+
         {% if books|length == 0 %}
         <div class="empty-state">
             <h2>No highlights yet</h2>
@@ -314,7 +429,17 @@
                     <h3 class="chapter-title">{{ chapter.title }}</h3>
 
                     {% for highlight in chapter.highlights %}
-                    <div class="highlight-item">
+                    <div class="highlight-item" data-highlight-id="{{ highlight.id }}">
+                        <div class="highlight-item-head">
+                            <label class="highlight-select">
+                                <input
+                                    type="checkbox"
+                                    class="highlight-select-checkbox"
+                                    onchange="toggleHighlightSelection('{{ highlight.id }}', this.checked)"
+                                >
+                                <span>Select</span>
+                            </label>
+                        </div>
                         <p class="highlight-text">{{ highlight.text }}</p>
 
                         {% if highlight.note %}
@@ -322,6 +447,12 @@
                             <strong>Note:</strong> {{ highlight.note }}
                         </div>
                         {% endif %}
+
+                        <div class="highlight-tags" id="highlight-tags-{{ highlight.id }}" {% if not highlight.tags %}hidden{% endif %}>
+                            {% for tag in highlight.tags %}
+                            <span class="highlight-tag">#{{ tag }}</span>
+                            {% endfor %}
+                        </div>
 
                         <div class="highlight-footer">
                             <span>{{ highlight.timestamp[:10] if highlight.timestamp else '' }}</span>
@@ -338,6 +469,156 @@
 
     <!-- Theme functions loaded from /static/theme-toggle.js -->
     <script>
+        const selectedHighlightIds = new Set();
+        const knownHighlightTags = new Set({{ all_highlight_tags | tojson }});
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function normalizeHighlightTags(tags) {
+            const rawTags = Array.isArray(tags)
+                ? tags
+                : (typeof tags === 'string' ? tags.split(',') : []);
+
+            return rawTags
+                .map(tag => String(tag || '').trim().toLowerCase())
+                .filter(tag => tag && tag.length <= 30)
+                .filter((tag, index, allTags) => allTags.indexOf(tag) === index)
+                .slice(0, 12);
+        }
+
+        function parseHighlightTagInput(value) {
+            return normalizeHighlightTags((value || '').split(','));
+        }
+
+        function renderTagSuggestions() {
+            const datalist = document.getElementById('highlightTagSuggestions');
+            const tags = Array.from(knownHighlightTags).sort((a, b) => a.localeCompare(b));
+            datalist.innerHTML = tags
+                .map(tag => `<option value="${escapeHtml(tag)}"></option>`)
+                .join('');
+        }
+
+        function setHighlightSelectionState(highlightId, isSelected) {
+            const item = document.querySelector(`[data-highlight-id="${highlightId}"]`);
+            if (!item) return;
+
+            item.classList.toggle('selected', isSelected);
+            const checkbox = item.querySelector('.highlight-select-checkbox');
+            if (checkbox) {
+                checkbox.checked = isSelected;
+            }
+        }
+
+        function updateBulkToolbar() {
+            const toolbar = document.getElementById('bulkToolbar');
+            const countLabel = document.getElementById('bulkCount');
+            const count = selectedHighlightIds.size;
+            countLabel.textContent = `${count} selected highlight${count === 1 ? '' : 's'}`;
+            toolbar.classList.toggle('show', count > 0);
+        }
+
+        function toggleHighlightSelection(highlightId, isSelected) {
+            if (isSelected) {
+                selectedHighlightIds.add(highlightId);
+            } else {
+                selectedHighlightIds.delete(highlightId);
+            }
+
+            setHighlightSelectionState(highlightId, isSelected);
+            updateBulkToolbar();
+        }
+
+        function clearSelectedHighlights() {
+            Array.from(selectedHighlightIds).forEach(highlightId => {
+                setHighlightSelectionState(highlightId, false);
+            });
+            selectedHighlightIds.clear();
+            updateBulkToolbar();
+        }
+
+        function renderHighlightTags(highlightId, tags) {
+            const container = document.getElementById(`highlight-tags-${highlightId}`);
+            if (!container) return;
+
+            const normalizedTags = normalizeHighlightTags(tags);
+            normalizedTags.forEach(tag => knownHighlightTags.add(tag));
+            container.hidden = normalizedTags.length === 0;
+            container.innerHTML = normalizedTags
+                .map(tag => `<span class="highlight-tag">#${escapeHtml(tag)}</span>`)
+                .join('');
+            renderTagSuggestions();
+        }
+
+        async function applyBulkTags() {
+            const highlightIds = Array.from(selectedHighlightIds);
+            if (highlightIds.length === 0) return;
+
+            const tagInput = document.getElementById('bulkTagInput');
+            const tags = parseHighlightTagInput(tagInput.value);
+            if (tags.length === 0) {
+                alert('Enter at least one tag to apply.');
+                tagInput.focus();
+                return;
+            }
+
+            try {
+                const response = await fetch(`{{ root_path }}/api/highlights/bulk/tags`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        highlight_ids: highlightIds,
+                        tags: tags,
+                        mode: 'add'
+                    })
+                });
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.detail || 'Failed to update highlight tags');
+                }
+
+                result.updated_highlights.forEach(highlight => {
+                    renderHighlightTags(highlight.id, highlight.tags || []);
+                });
+                tagInput.value = '';
+            } catch (error) {
+                console.error('Failed to apply bulk tags:', error);
+                alert('Failed to update tags. Please try again.');
+            }
+        }
+
+        async function deleteSelectedHighlights() {
+            const highlightIds = Array.from(selectedHighlightIds);
+            if (highlightIds.length === 0) return;
+
+            const confirmed = window.confirm(
+                `Delete ${highlightIds.length} selected highlight${highlightIds.length === 1 ? '' : 's'}?`
+            );
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`{{ root_path }}/api/highlights/bulk/delete`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({highlight_ids: highlightIds})
+                });
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.detail || 'Failed to delete highlights');
+                }
+
+                window.location.reload();
+            } catch (error) {
+                console.error('Failed to bulk delete highlights:', error);
+                alert('Failed to delete selected highlights. Please try again.');
+            }
+        }
+
         // Show border on sticky header when scrolled
         const header = document.querySelector('.header');
         if (header) {
@@ -345,6 +626,8 @@
                 header.classList.toggle('scrolled', window.scrollY > 10);
             }, { passive: true });
         }
+
+        renderTagSuggestions();
     </script>
 </body>
 </html>

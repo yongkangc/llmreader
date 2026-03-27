@@ -277,12 +277,20 @@
         mark.highlight:hover {
             background-color: rgba(253, 224, 71, 0.8);
         }
+        mark.highlight.is-selected {
+            background-color: rgba(251, 191, 36, 0.92);
+            box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.35);
+        }
         body.dark-mode mark.highlight {
             background-color: rgba(133, 77, 14, 0.5);
             color: var(--text-primary);
         }
         body.dark-mode mark.highlight:hover {
             background-color: rgba(161, 98, 7, 0.6);
+        }
+        body.dark-mode mark.highlight.is-selected {
+            background-color: rgba(245, 158, 11, 0.72);
+            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
         }
         /* Note indicator for highlights with notes */
         mark.highlight.has-note {
@@ -408,6 +416,79 @@
             }
         }
 
+        .bulk-highlight-toolbar {
+            position: sticky;
+            bottom: 18px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 24px;
+            padding: 12px 14px;
+            border: 1px solid var(--border-medium);
+            border-radius: 12px;
+            background: color-mix(in srgb, var(--bg-main) 88%, transparent);
+            backdrop-filter: blur(14px);
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+            z-index: 25;
+        }
+        .bulk-highlight-toolbar.show {
+            display: flex;
+        }
+        .bulk-highlight-count {
+            font-family: var(--font-sans, -apple-system, sans-serif);
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            background: var(--bg-button);
+            border: 1px solid var(--border-subtle);
+            border-radius: 999px;
+            padding: 6px 10px;
+            white-space: nowrap;
+        }
+        .bulk-highlight-toolbar input {
+            flex: 1 1 220px;
+            min-width: 180px;
+            padding: 9px 12px;
+            border: 1px solid var(--border-medium);
+            border-radius: 8px;
+            background: var(--bg-button);
+            color: var(--text-primary);
+            font-family: var(--font-sans, -apple-system, sans-serif);
+            font-size: 0.85rem;
+            outline: none;
+        }
+        .bulk-highlight-toolbar input:focus {
+            border-color: var(--accent-primary);
+        }
+        .bulk-highlight-toolbar button {
+            border: none;
+            border-radius: 8px;
+            padding: 9px 12px;
+            cursor: pointer;
+            font-family: var(--font-sans, -apple-system, sans-serif);
+            font-size: 0.82rem;
+            font-weight: 600;
+            transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+        }
+        .bulk-highlight-toolbar button:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+        }
+        .bulk-highlight-toolbar button.primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+        .bulk-highlight-toolbar button.secondary {
+            background: var(--bg-button);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+        }
+        .bulk-highlight-toolbar button.danger {
+            background: rgba(220, 53, 69, 0.12);
+            color: #dc3545;
+        }
+
         /* Highlight Popup Menu */
         .highlight-popup {
             position: absolute;
@@ -421,6 +502,11 @@
             font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, sans-serif);
         }
         .highlight-popup.show {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .highlight-popup-actions {
             display: flex;
             flex-direction: row;
             gap: 2px;
@@ -461,6 +547,41 @@
             width: 1px;
             background: var(--border-light);
             margin: 4px 2px;
+        }
+        .highlight-popup-meta {
+            display: none;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 0 6px 4px;
+        }
+        .highlight-popup-meta.show {
+            display: flex;
+        }
+        .highlight-popup-meta-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding-top: 3px;
+        }
+        .highlight-popup-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .highlight-tag-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: var(--bg-button);
+            color: var(--accent-primary);
+            border: 1px solid var(--border-subtle);
+            font-family: var(--font-sans, -apple-system, sans-serif);
+            font-size: 0.74rem;
+            font-weight: 600;
+            line-height: 1;
         }
 
         /* Note Tooltip on Hover */
@@ -809,6 +930,15 @@
                 {% endif %}
             </div>
 
+            <div class="bulk-highlight-toolbar" id="bulkHighlightToolbar">
+                <span class="bulk-highlight-count" id="bulkHighlightCount">0 selected</span>
+                <input id="bulkTagInput" type="text" list="bulkTagSuggestions" placeholder="Add tags (comma separated)">
+                <button class="primary" onclick="applyBulkTags()">Add tags</button>
+                <button class="danger" onclick="deleteSelectedHighlights()">Delete selected</button>
+                <button class="secondary" onclick="clearSelectedHighlights()">Clear</button>
+            </div>
+            <datalist id="bulkTagSuggestions"></datalist>
+
             <!-- Undo Toast for Instant Highlight -->
             <div class="highlight-undo-toast" id="highlightUndoToast">
                 <span>Highlighted</span>
@@ -817,20 +947,31 @@
 
             <!-- Highlight Popup Menu -->
             <div class="highlight-popup" id="highlightPopup">
-                <button onclick="copyHighlightText()">
-                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z"/></svg>
-                    Copy
-                </button>
-                <div class="divider"></div>
-                <button onclick="toggleNoteEditor()">
-                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>
-                    <span id="noteButtonLabel">Note</span>
-                </button>
-                <div class="divider"></div>
-                <button class="danger" onclick="removeHighlight()">
-                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
-                    Remove
-                </button>
+                <div class="highlight-popup-actions">
+                    <button onclick="copyHighlightText()">
+                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z"/></svg>
+                        Copy
+                    </button>
+                    <div class="divider"></div>
+                    <button onclick="toggleCurrentHighlightSelection()">
+                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/><path d="M1.5 1h13a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5Zm12.5 1h-12v12h12V2Z"/></svg>
+                        <span id="selectButtonLabel">Select</span>
+                    </button>
+                    <div class="divider"></div>
+                    <button onclick="toggleNoteEditor()">
+                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>
+                        <span id="noteButtonLabel">Note</span>
+                    </button>
+                    <div class="divider"></div>
+                    <button class="danger" onclick="removeHighlight()">
+                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+                        Remove
+                    </button>
+                </div>
+                <div class="highlight-popup-meta" id="highlightPopupMeta">
+                    <span class="highlight-popup-meta-label">Tags</span>
+                    <div class="highlight-popup-tags" id="highlightPopupTags"></div>
+                </div>
             </div>
             <!-- Note Editor (separate from popup) -->
             <div class="note-editor" id="noteEditor">
@@ -1415,18 +1556,218 @@
         const bookId = "{{ book_id }}";
         const chapterIndex = {{ chapter_index }};
         const chapterHref = "{{ current_chapter.href }}";
+        const selectedHighlightIds = new Set();
+
+        function normalizeHighlightTags(tags) {
+            const rawTags = Array.isArray(tags)
+                ? tags
+                : (typeof tags === 'string' ? tags.split(',') : []);
+
+            return rawTags
+                .map(tag => String(tag || '').trim().toLowerCase())
+                .filter(tag => tag && tag.length <= 30)
+                .filter((tag, index, allTags) => allTags.indexOf(tag) === index)
+                .slice(0, 12);
+        }
+
+        function parseHighlightTagInput(value) {
+            return normalizeHighlightTags((value || '').split(','));
+        }
+
+        function findHighlightById(highlightId) {
+            return loadedHighlights.find(highlight => highlight.id === highlightId);
+        }
+
+        function upsertLoadedHighlight(highlight) {
+            const normalizedHighlight = {
+                ...highlight,
+                note: highlight.note || '',
+                tags: normalizeHighlightTags(highlight.tags || [])
+            };
+            const existingIndex = loadedHighlights.findIndex(item => item.id === normalizedHighlight.id);
+
+            if (existingIndex === -1) {
+                loadedHighlights.push(normalizedHighlight);
+            } else {
+                loadedHighlights[existingIndex] = {
+                    ...loadedHighlights[existingIndex],
+                    ...normalizedHighlight
+                };
+            }
+
+            return normalizedHighlight;
+        }
+
+        function renderBulkTagSuggestions() {
+            const datalist = document.getElementById('bulkTagSuggestions');
+            if (!datalist) return;
+
+            const tags = Array.from(new Set(
+                loadedHighlights.flatMap(highlight => normalizeHighlightTags(highlight.tags || []))
+            )).sort((a, b) => a.localeCompare(b));
+
+            datalist.innerHTML = tags
+                .map(tag => `<option value="${escapeHtml(tag)}"></option>`)
+                .join('');
+        }
+
+        function setHighlightSelectedState(highlightId, isSelected) {
+            document.querySelectorAll(`mark[data-highlight-id="${highlightId}"]`).forEach(mark => {
+                mark.classList.toggle('is-selected', isSelected);
+            });
+        }
+
+        function updateHighlightMarkMetadata(highlight) {
+            const noteText = highlight.note || '';
+            const tags = normalizeHighlightTags(highlight.tags || []);
+
+            document.querySelectorAll(`mark[data-highlight-id="${highlight.id}"]`).forEach(mark => {
+                mark.dataset.note = noteText;
+                mark.dataset.tags = JSON.stringify(tags);
+                mark.classList.toggle('has-note', Boolean(noteText.trim()));
+                mark.classList.toggle('is-selected', selectedHighlightIds.has(highlight.id));
+            });
+        }
+
+        function renderHighlightPopupTags(highlight) {
+            const popupMeta = document.getElementById('highlightPopupMeta');
+            const popupTags = document.getElementById('highlightPopupTags');
+            if (!popupMeta || !popupTags) return;
+
+            const tags = normalizeHighlightTags(highlight?.tags || []);
+            if (tags.length === 0) {
+                popupMeta.classList.remove('show');
+                popupTags.innerHTML = '';
+                return;
+            }
+
+            popupTags.innerHTML = tags
+                .map(tag => `<span class="highlight-tag-chip">#${escapeHtml(tag)}</span>`)
+                .join('');
+            popupMeta.classList.add('show');
+        }
+
+        function updateBulkHighlightToolbar() {
+            const toolbar = document.getElementById('bulkHighlightToolbar');
+            const countLabel = document.getElementById('bulkHighlightCount');
+            const selectionCount = selectedHighlightIds.size;
+
+            countLabel.textContent = `${selectionCount} selected highlight${selectionCount === 1 ? '' : 's'}`;
+            toolbar.classList.toggle('show', selectionCount > 0);
+
+            const selectButtonLabel = document.getElementById('selectButtonLabel');
+            if (selectButtonLabel) {
+                selectButtonLabel.textContent = currentHighlightId && selectedHighlightIds.has(currentHighlightId)
+                    ? 'Deselect'
+                    : 'Select';
+            }
+        }
+
+        function clearSelectedHighlights() {
+            Array.from(selectedHighlightIds).forEach(highlightId => {
+                setHighlightSelectedState(highlightId, false);
+            });
+            selectedHighlightIds.clear();
+            updateBulkHighlightToolbar();
+        }
+
+        function toggleHighlightSelection(highlightId) {
+            if (selectedHighlightIds.has(highlightId)) {
+                selectedHighlightIds.delete(highlightId);
+                setHighlightSelectedState(highlightId, false);
+            } else {
+                selectedHighlightIds.add(highlightId);
+                setHighlightSelectedState(highlightId, true);
+            }
+
+            updateBulkHighlightToolbar();
+        }
+
+        function toggleCurrentHighlightSelection() {
+            if (!currentHighlightId) return;
+            toggleHighlightSelection(currentHighlightId);
+            hideHighlightPopup();
+        }
+
+        function handleHighlightClick(e, highlightId) {
+            e.stopPropagation();
+
+            if (selectedHighlightIds.size > 0) {
+                toggleHighlightSelection(highlightId);
+                return;
+            }
+
+            showHighlightPopup(e, highlightId);
+        }
+
+        function unwrapHighlightMarks(highlightId) {
+            const marks = document.querySelectorAll(`mark[data-highlight-id="${highlightId}"]`);
+            marks.forEach(mark => {
+                const parent = mark.parentNode;
+                while (mark.firstChild) {
+                    parent.insertBefore(mark.firstChild, mark);
+                }
+                parent.removeChild(mark);
+                parent.normalize();
+            });
+        }
+
+        function removeHighlightLocally(highlightId) {
+            removeInlineNote(highlightId);
+            unwrapHighlightMarks(highlightId);
+
+            loadedHighlights = loadedHighlights.filter(highlight => highlight.id !== highlightId);
+            selectedHighlightIds.delete(highlightId);
+
+            if (lastHighlightId === highlightId) {
+                lastHighlightId = null;
+            }
+
+            if (currentHighlightId === highlightId) {
+                hideHighlightPopup();
+            } else {
+                updateBulkHighlightToolbar();
+            }
+
+            renderBulkTagSuggestions();
+        }
+
+        function createContentTextWalker(content) {
+            return document.createTreeWalker(content, NodeFilter.SHOW_TEXT, {
+                acceptNode(node) {
+                    if (!node.textContent || node.textContent.length === 0) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+
+                    const parent = node.parentElement;
+                    if (parent && parent.closest('.inline-note')) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+        }
 
         // Load highlights for current chapter on page load
         async function loadHighlights() {
             try {
                 const response = await fetch(`{{ root_path }}/api/books/${bookId}/highlights`);
                 const data = await response.json();
-                loadedHighlights = data.highlights.filter(h => h.chapter_index === chapterIndex);
+                loadedHighlights = data.highlights
+                    .filter(h => h.chapter_index === chapterIndex)
+                    .map(highlight => ({
+                        ...highlight,
+                        note: highlight.note || '',
+                        tags: normalizeHighlightTags(highlight.tags || [])
+                    }));
 
                 // Apply highlights to content
                 loadedHighlights.forEach(highlight => {
                     applyHighlightToDOM(highlight);
                 });
+
+                renderBulkTagSuggestions();
 
                 // After highlights are applied, check if we need to scroll to a specific highlight
                 scrollToHighlightFromHash();
@@ -1448,7 +1789,7 @@
             } else {
                 // Fallback: try to scroll to the approximate position using offset
                 const highlight = loadedHighlights.find(h => h.id === highlightId);
-                if (highlight && highlight.start_offset) {
+                if (highlight && Number.isFinite(highlight.start_offset)) {
                     scrollToOffset(highlight.start_offset, highlight.text);
                 } else {
                     console.log('Highlight not found:', highlightId);
@@ -1486,7 +1827,7 @@
         // Scroll to a position in the content based on text offset
         function scrollToOffset(targetOffset, searchText) {
             const content = document.getElementById('chapterContent');
-            const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT, null);
+            const walker = createContentTextWalker(content);
 
             let currentOffset = 0;
             let node;
@@ -1519,106 +1860,135 @@
             }
         }
 
-        // Apply a highlight to the DOM by wrapping text in <mark>
-        function applyHighlightToDOM(highlight) {
-            const content = document.getElementById('chapterContent');
-            const fullText = content.textContent;
-            const targetOffset = highlight.start_offset || 0;
-            const highlightText = highlight.text;
+        function addHighlightMarkListeners(mark, highlightId) {
+            mark.addEventListener('click', (e) => handleHighlightClick(e, highlightId));
+            mark.addEventListener('mouseenter', (e) => showNoteTooltip(e, highlightId));
+            mark.addEventListener('mouseleave', hideNoteTooltip);
+        }
 
-            // Find the text at the specified offset
-            const walker = document.createTreeWalker(
-                content,
-                NodeFilter.SHOW_TEXT,
-                null
-            );
+        function createHighlightMarkElement(highlightId, noteText = '', tags = []) {
+            const mark = document.createElement('mark');
+            mark.className = 'highlight';
+            if (noteText && noteText.trim()) {
+                mark.classList.add('has-note');
+            }
+            mark.dataset.highlightId = highlightId;
+            mark.dataset.note = noteText || '';
+            mark.dataset.tags = JSON.stringify(normalizeHighlightTags(tags));
+            mark.classList.toggle('is-selected', selectedHighlightIds.has(highlightId));
+            return mark;
+        }
 
-            let currentOffset = 0;
+        function getTextNodesInRange(content, range) {
+            const walker = createContentTextWalker(content);
+            const textNodes = [];
             let node;
-            let found = false;
+
+            while (node = walker.nextNode()) {
+                if (range.intersectsNode(node)) {
+                    textNodes.push(node);
+                }
+            }
+
+            return textNodes;
+        }
+
+        function createRangeFromOffsets(content, startOffset, endOffset) {
+            if (!Number.isFinite(startOffset) || !Number.isFinite(endOffset) || endOffset <= startOffset) {
+                return null;
+            }
+
+            const walker = createContentTextWalker(content);
+            let node;
+            let accumulatedOffset = 0;
+            let startNode = null;
+            let startNodeOffset = 0;
+            let endNode = null;
+            let endNodeOffset = 0;
 
             while (node = walker.nextNode()) {
                 const nodeLength = node.textContent.length;
-                const nodeStartOffset = currentOffset;
-                const nodeEndOffset = currentOffset + nodeLength;
+                const nodeStart = accumulatedOffset;
+                const nodeEnd = accumulatedOffset + nodeLength;
 
-                // Check if our target offset falls within this node
-                if (targetOffset >= nodeStartOffset && targetOffset < nodeEndOffset) {
-                    const localOffset = targetOffset - nodeStartOffset;
-                    const textInNode = node.textContent.substring(localOffset);
-
-                    // Verify the text matches
-                    if (textInNode.startsWith(highlightText)) {
-                        try {
-                            const range = document.createRange();
-                            range.setStart(node, localOffset);
-
-                            // Calculate end position (might span multiple nodes)
-                            const endOffset = Math.min(localOffset + highlightText.length, nodeLength);
-                            range.setEnd(node, endOffset);
-
-                            const mark = document.createElement('mark');
-                            mark.className = 'highlight' + (highlight.note && highlight.note.trim() ? ' has-note' : '');
-                            mark.dataset.highlightId = highlight.id;
-                            mark.dataset.note = highlight.note || '';
-
-                            range.surroundContents(mark);
-                            mark.addEventListener('click', (e) => showHighlightPopup(e, highlight.id));
-                            mark.addEventListener('mouseenter', (e) => showNoteTooltip(e, highlight.id));
-                            mark.addEventListener('mouseleave', hideNoteTooltip);
-                            // Create inline note if highlight has a note
-                            if (highlight.note && highlight.note.trim()) {
-                                createInlineNote(mark, highlight.id, highlight.note);
-                            }
-                            found = true;
-                            break;
-                        } catch (e) {
-                            console.warn('Could not apply highlight at offset', targetOffset, e);
-                        }
-                    }
+                if (!startNode && startOffset < nodeEnd) {
+                    startNode = node;
+                    startNodeOffset = Math.max(0, startOffset - nodeStart);
                 }
 
-                currentOffset += nodeLength;
+                if (!endNode && endOffset <= nodeEnd) {
+                    endNode = node;
+                    endNodeOffset = Math.max(0, endOffset - nodeStart);
+                    break;
+                }
+
+                accumulatedOffset = nodeEnd;
             }
 
-            // Fallback: if offset-based matching failed, try simple text search
-            if (!found) {
-                currentOffset = 0;
-                const walker2 = document.createTreeWalker(content, NodeFilter.SHOW_TEXT, null);
-                while (node = walker2.nextNode()) {
-                    const text = node.textContent;
-                    const localIndex = text.indexOf(highlightText);
+            if (!startNode || !endNode) {
+                return null;
+            }
 
-                    if (localIndex !== -1) {
-                        try {
-                            const range = document.createRange();
-                            range.setStart(node, localIndex);
-                            range.setEnd(node, localIndex + highlightText.length);
+            const range = document.createRange();
+            range.setStart(startNode, Math.min(startNodeOffset, startNode.length));
+            range.setEnd(endNode, Math.min(endNodeOffset, endNode.length));
 
-                            const mark = document.createElement('mark');
-                            mark.className = 'highlight' + (highlight.note && highlight.note.trim() ? ' has-note' : '');
-                            mark.dataset.highlightId = highlight.id;
-                            mark.dataset.note = highlight.note || '';
+            if (range.collapsed) {
+                return null;
+            }
 
-                            range.surroundContents(mark);
-                            mark.addEventListener('click', (e) => showHighlightPopup(e, highlight.id));
-                            mark.addEventListener('mouseenter', (e) => showNoteTooltip(e, highlight.id));
-                            mark.addEventListener('mouseleave', hideNoteTooltip);
-                            // Create inline note if highlight has a note
-                            if (highlight.note && highlight.note.trim()) {
-                                createInlineNote(mark, highlight.id, highlight.note);
-                            }
-                            found = true;
-                            break;
-                        } catch (e) {
-                            console.warn('Fallback highlight failed:', e);
-                        }
-                    }
-                    currentOffset += text.length;
+            return range;
+        }
+
+        // Apply a highlight to the DOM by wrapping text in <mark>
+        function applyHighlightToDOM(highlight) {
+            const content = document.getElementById('chapterContent');
+            const highlightText = highlight.text || '';
+            const noteText = highlight.note || '';
+            const highlightTags = normalizeHighlightTags(highlight.tags || []);
+
+            let marksApplied = 0;
+
+            if (Number.isFinite(highlight.start_offset)) {
+                const startOffset = highlight.start_offset;
+                const endOffset = Number.isFinite(highlight.end_offset) && highlight.end_offset > startOffset
+                    ? highlight.end_offset
+                    : startOffset + highlightText.length;
+
+                const range = createRangeFromOffsets(content, startOffset, endOffset);
+                if (range) {
+                    marksApplied = applyHighlightToRange(range, highlight.id, noteText, highlightTags);
                 }
             }
 
-            return found;
+            // Fallback: if offset-based matching failed, try simple single-node text search
+            if (marksApplied === 0 && highlightText) {
+                const walker = createContentTextWalker(content);
+                let node;
+                while (node = walker.nextNode()) {
+                    const localIndex = node.textContent.indexOf(highlightText);
+                    if (localIndex === -1) {
+                        continue;
+                    }
+
+                    const range = document.createRange();
+                    range.setStart(node, localIndex);
+                    range.setEnd(node, localIndex + highlightText.length);
+                    marksApplied = applyHighlightToRange(range, highlight.id, noteText, highlightTags);
+                    if (marksApplied > 0) {
+                        break;
+                    }
+                }
+            }
+
+            if (marksApplied > 0 && noteText.trim()) {
+                const mark = document.querySelector(`mark[data-highlight-id="${highlight.id}"]`);
+                if (mark) {
+                    createInlineNote(mark, highlight.id, noteText);
+                }
+            }
+
+            return marksApplied > 0;
         }
 
         // Text selection detection - Instant highlight on selection
@@ -1636,6 +2006,8 @@
         function handleSelectionEnd(e) {
             const selection = window.getSelection();
             const selectedText = selection.toString().trim();
+
+            if (selectedHighlightIds.size > 0) return;
 
             // Need at least 3 characters to highlight
             if (selectedText.length < 3) return;
@@ -1660,6 +2032,42 @@
 
             // Create highlight instantly
             createHighlightInstant(rect);
+        }
+
+        // Wrap each text node in a range with a <mark> highlight.
+        // Works across element boundaries by wrapping individual text node segments.
+        function applyHighlightToRange(range, highlightId, noteText = '', tags = []) {
+            const content = document.getElementById('chapterContent');
+            const textNodes = getTextNodesInRange(content, range);
+            let marksApplied = 0;
+
+            for (const textNode of textNodes) {
+                const nodeRange = document.createRange();
+                nodeRange.selectNodeContents(textNode);
+
+                if (textNode === range.startContainer) {
+                    nodeRange.setStart(textNode, range.startOffset);
+                }
+
+                if (textNode === range.endContainer) {
+                    nodeRange.setEnd(textNode, range.endOffset);
+                }
+
+                if (nodeRange.collapsed || nodeRange.toString().length === 0) {
+                    continue;
+                }
+
+                const mark = createHighlightMarkElement(highlightId, noteText, tags);
+                try {
+                    nodeRange.surroundContents(mark);
+                    addHighlightMarkListeners(mark, highlightId);
+                    marksApplied += 1;
+                } catch (e) {
+                    console.warn('Could not wrap text node:', e);
+                }
+            }
+
+            return marksApplied;
         }
 
         // Create highlight and show undo toast above selection
@@ -1691,28 +2099,13 @@
                     // Apply highlight to DOM
                     try {
                         const range = currentSelection.range;
-                        const mark = document.createElement('mark');
-                        mark.className = 'highlight';
-                        mark.dataset.highlightId = result.highlight.id;
-                        mark.dataset.note = '';
+                        const createdHighlight = upsertLoadedHighlight(result.highlight);
 
-                        try {
-                            range.surroundContents(mark);
-                        } catch (e) {
-                            const fragment = range.extractContents();
-                            mark.appendChild(fragment);
-                            range.insertNode(mark);
-                        }
-
-                        mark.addEventListener('click', (e) => showHighlightPopup(e, result.highlight.id));
-                        mark.addEventListener('mouseenter', (e) => showNoteTooltip(e, result.highlight.id));
-                        mark.addEventListener('mouseleave', hideNoteTooltip);
-
-                        // Add to loaded highlights
-                        loadedHighlights.push(result.highlight);
+                        applyHighlightToRange(range, createdHighlight.id, createdHighlight.note, createdHighlight.tags);
+                        renderBulkTagSuggestions();
 
                         // Store for undo
-                        lastHighlightId = result.highlight.id;
+                        lastHighlightId = createdHighlight.id;
 
                         // Show undo toast above where the selection was
                         showUndoToast(selectionRect);
@@ -1782,24 +2175,7 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    // Remove inline note if any
-                    removeInlineNote(lastHighlightId);
-
-                    // Remove from DOM
-                    const mark = document.querySelector(`[data-highlight-id="${lastHighlightId}"]`);
-                    if (mark) {
-                        const parent = mark.parentNode;
-                        while (mark.firstChild) {
-                            parent.insertBefore(mark.firstChild, mark);
-                        }
-                        parent.removeChild(mark);
-                        // Normalize to merge adjacent text nodes
-                        parent.normalize();
-                    }
-
-                    // Remove from cache
-                    loadedHighlights = loadedHighlights.filter(h => h.id !== lastHighlightId);
-                    lastHighlightId = null;
+                    removeHighlightLocally(lastHighlightId);
 
                     hideUndoToast();
                 }
@@ -1811,11 +2187,7 @@
         // Calculate offset of a range in the content
         function calculateOffset(range) {
             const content = document.getElementById('chapterContent');
-            const walker = document.createTreeWalker(
-                content,
-                NodeFilter.SHOW_TEXT,
-                null
-            );
+            const walker = createContentTextWalker(content);
 
             let offset = 0;
             let node;
@@ -1839,16 +2211,19 @@
 
             currentHighlightId = highlightId;
 
-            const highlight = loadedHighlights.find(h => h.id === highlightId);
+            const highlight = findHighlightById(highlightId);
             if (!highlight) return;
 
             // Update note button label
             const noteLabel = document.getElementById('noteButtonLabel');
             noteLabel.textContent = highlight.note ? 'Edit' : 'Note';
+            renderHighlightPopupTags(highlight);
+            updateBulkHighlightToolbar();
 
             // Position popup
             const popup = document.getElementById('highlightPopup');
-            const rect = e.target.getBoundingClientRect();
+            const popupTarget = e.target.closest('mark[data-highlight-id]') || e.target;
+            const rect = popupTarget.getBoundingClientRect();
             const containerRect = document.querySelector('.content-container').getBoundingClientRect();
 
             // Position relative to the content-container
@@ -1864,8 +2239,10 @@
 
         function hideHighlightPopup() {
             document.getElementById('highlightPopup').classList.remove('show');
+            document.getElementById('highlightPopupMeta').classList.remove('show');
             document.getElementById('noteEditor').classList.remove('show');
             currentHighlightId = null;
+            updateBulkHighlightToolbar();
         }
 
         // Note tooltip on hover (only for highlights without inline notes visible)
@@ -1946,7 +2323,7 @@
 
         // Copy highlight text to clipboard
         function copyHighlightText() {
-            const highlight = loadedHighlights.find(h => h.id === currentHighlightId);
+            const highlight = findHighlightById(currentHighlightId);
             if (!highlight) return;
 
             navigator.clipboard.writeText(highlight.text).then(() => {
@@ -1973,7 +2350,7 @@
                 editor.style.left = `${popupRect.left - containerRect.left}px`;
 
                 // Load existing note
-                const highlight = loadedHighlights.find(h => h.id === currentHighlightId);
+                const highlight = findHighlightById(currentHighlightId);
                 input.value = highlight?.note || '';
                 editor.classList.add('show');
                 input.focus();
@@ -1994,26 +2371,12 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    // Update local cache
-                    const highlight = loadedHighlights.find(h => h.id === currentHighlightId);
-                    if (highlight) {
-                        highlight.note = note;
-                    }
-
-                    // Update DOM
-                    const mark = document.querySelector(`[data-highlight-id="${currentHighlightId}"]`);
-                    if (mark) {
-                        mark.dataset.note = note;
-                        // Update has-note class based on whether note exists
-                        if (note) {
-                            mark.classList.add('has-note');
-                        } else {
-                            mark.classList.remove('has-note');
-                        }
-                    }
+                    const updatedHighlight = upsertLoadedHighlight(result.highlight);
+                    updateHighlightMarkMetadata(updatedHighlight);
 
                     // Update inline note
-                    updateInlineNote(currentHighlightId, note);
+                    updateInlineNote(updatedHighlight.id, updatedHighlight.note);
+                    renderHighlightPopupTags(updatedHighlight);
 
                     document.getElementById('noteEditor').classList.remove('show');
                     hideHighlightPopup();
@@ -2025,35 +2388,98 @@
 
         // Remove highlight
         async function removeHighlight() {
+            const highlightId = currentHighlightId;
             try {
-                const response = await fetch(`{{ root_path }}/api/highlights/${currentHighlightId}`, {
+                const response = await fetch(`{{ root_path }}/api/highlights/${highlightId}`, {
                     method: 'DELETE'
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
-                    // Remove inline note
-                    removeInlineNote(currentHighlightId);
-
-                    // Remove from DOM
-                    const mark = document.querySelector(`[data-highlight-id="${currentHighlightId}"]`);
-                    if (mark) {
-                        const parent = mark.parentNode;
-                        while (mark.firstChild) {
-                            parent.insertBefore(mark.firstChild, mark);
-                        }
-                        parent.removeChild(mark);
-                    }
-
-                    // Remove from cache
-                    loadedHighlights = loadedHighlights.filter(h => h.id !== currentHighlightId);
-
-                    hideHighlightPopup();
+                    removeHighlightLocally(highlightId);
                 }
             } catch (error) {
                 console.error('Failed to remove highlight:', error);
                 alert('Failed to remove highlight. Please try again.');
+            }
+        }
+
+        async function applyBulkTags() {
+            const highlightIds = Array.from(selectedHighlightIds);
+            if (highlightIds.length === 0) return;
+
+            const tagInput = document.getElementById('bulkTagInput');
+            const tags = parseHighlightTagInput(tagInput.value);
+            if (tags.length === 0) {
+                alert('Enter at least one tag to apply.');
+                tagInput.focus();
+                return;
+            }
+
+            try {
+                const response = await fetch(`{{ root_path }}/api/highlights/bulk/tags`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        highlight_ids: highlightIds,
+                        tags: tags,
+                        mode: 'add'
+                    })
+                });
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.detail || 'Failed to update highlight tags');
+                }
+
+                result.updated_highlights.forEach(highlight => {
+                    const updatedHighlight = upsertLoadedHighlight(highlight);
+                    updateHighlightMarkMetadata(updatedHighlight);
+                    updateInlineNote(updatedHighlight.id, updatedHighlight.note);
+                });
+
+                renderBulkTagSuggestions();
+                tagInput.value = '';
+
+                if (currentHighlightId) {
+                    renderHighlightPopupTags(findHighlightById(currentHighlightId));
+                }
+            } catch (error) {
+                console.error('Failed to apply bulk tags:', error);
+                alert('Failed to update tags. Please try again.');
+            }
+        }
+
+        async function deleteSelectedHighlights() {
+            const highlightIds = Array.from(selectedHighlightIds);
+            if (highlightIds.length === 0) return;
+
+            const confirmed = window.confirm(
+                `Delete ${highlightIds.length} selected highlight${highlightIds.length === 1 ? '' : 's'}?`
+            );
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`{{ root_path }}/api/highlights/bulk/delete`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({highlight_ids: highlightIds})
+                });
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.detail || 'Failed to delete highlights');
+                }
+
+                result.deleted_ids.forEach(highlightId => {
+                    removeHighlightLocally(highlightId);
+                });
+
+                clearSelectedHighlights();
+            } catch (error) {
+                console.error('Failed to bulk delete highlights:', error);
+                alert('Failed to delete selected highlights. Please try again.');
             }
         }
 

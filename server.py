@@ -214,6 +214,10 @@ HIGHLIGHTS_FILE = "highlights.json"
 # Reading progress storage
 PROGRESS_FILE = "reading_progress.json"
 
+# Highlight tag limits
+MAX_HIGHLIGHT_TAGS = 12
+MAX_HIGHLIGHT_TAG_LENGTH = 30
+
 
 def _sanitize_filename(filename: str, fallback_ext: str) -> str:
     """Return a filesystem-safe filename, ensuring an extension exists."""
@@ -280,6 +284,81 @@ def save_progress(progress: Dict[str, Any]) -> None:
         raise HTTPException(status_code=500, detail=f"Failed to save progress: {e}")
 
 
+def normalize_highlight_tags(tags_input: Any) -> List[str]:
+    """Normalize tags for highlights: lowercase, trimmed, unique, capped."""
+    if tags_input is None:
+        return []
+
+    if isinstance(tags_input, str):
+        raw_tags = tags_input.split(',')
+    elif isinstance(tags_input, list):
+        raw_tags = tags_input
+    else:
+        raw_tags = [tags_input]
+
+    normalized: List[str] = []
+    seen = set()
+
+    for raw_tag in raw_tags:
+        tag = str(raw_tag).strip().lower()
+        if not tag:
+            continue
+        if len(tag) > MAX_HIGHLIGHT_TAG_LENGTH:
+            continue
+        if tag in seen:
+            continue
+
+        normalized.append(tag)
+        seen.add(tag)
+
+        if len(normalized) >= MAX_HIGHLIGHT_TAGS:
+            break
+
+    return normalized
+
+
+def hydrate_highlight_record(highlight: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure highlight records include backward-compatible defaults."""
+    hydrated = dict(highlight)
+    hydrated["note"] = hydrated.get("note", "")
+    hydrated["color"] = hydrated.get("color", "yellow")
+    hydrated["tags"] = normalize_highlight_tags(hydrated.get("tags", []))
+    return hydrated
+
+
+def hydrate_highlights_collection(highlights: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize highlight records in an entire highlights payload."""
+    hydrated: Dict[str, Any] = {}
+    for book_id, book_data in highlights.items():
+        book_payload = dict(book_data)
+        book_payload["highlights"] = [
+            hydrate_highlight_record(highlight)
+            for highlight in book_data.get("highlights", [])
+        ]
+        hydrated[book_id] = book_payload
+    return hydrated
+
+
+def parse_highlight_ids(ids_input: Any) -> List[str]:
+    """Normalize a highlight id list from request payloads."""
+    if not isinstance(ids_input, list):
+        return []
+
+    ids: List[str] = []
+    seen = set()
+
+    for raw_id in ids_input:
+        highlight_id = str(raw_id).strip()
+        if not highlight_id:
+            continue
+        if highlight_id in seen:
+            continue
+        ids.append(highlight_id)
+        seen.add(highlight_id)
+
+    return ids
+
+
 def get_highlight_by_id(highlight_id: str) -> tuple[Optional[str], Optional[Dict], Optional[int]]:
     """
     Find a highlight by ID across all books.
@@ -309,7 +388,10 @@ def export_to_obsidian_markdown() -> str:
 
     for book_id in sorted(highlights.keys()):
         book_data = highlights[book_id]
-        book_highlights = book_data.get('highlights', [])
+        book_highlights = [
+            hydrate_highlight_record(hl)
+            for hl in book_data.get('highlights', [])
+        ]
 
         if not book_highlights:
             continue
@@ -352,6 +434,11 @@ def export_to_obsidian_markdown() -> str:
                 note = hl.get('note', '').strip()
                 if note:
                     lines.append(f"Note: {note}\n")
+
+                tags = hl.get('tags', [])
+                if tags:
+                    tag_line = " ".join(f"#{tag}" for tag in tags)
+                    lines.append(f"Tags: {tag_line}\n")
 
                 # Add timestamp
                 timestamp = hl.get('timestamp', '')
@@ -904,7 +991,7 @@ async def get_all_highlights():
     Returns all highlights across all books.
     """
     highlights = load_highlights()
-    return highlights
+    return hydrate_highlights_collection(highlights)
 
 
 @app.get("/api/books/{book_id}/highlights")
@@ -913,7 +1000,10 @@ async def get_book_highlights(book_id: str):
     Returns highlights for a specific book.
     """
     highlights = load_highlights()
-    book_highlights = highlights.get(book_id, {}).get('highlights', [])
+    book_highlights = [
+        hydrate_highlight_record(hl)
+        for hl in highlights.get(book_id, {}).get('highlights', [])
+    ]
     return {"highlights": book_highlights}
 
 
@@ -949,7 +1039,8 @@ async def create_highlight(book_id: str, request: Request):
             "end_offset": body.get("end_offset", 0),
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "note": body.get("note", ""),
-            "color": body.get("color", "yellow")
+            "color": body.get("color", "yellow"),
+            "tags": normalize_highlight_tags(body.get("tags", [])),
         }
 
         # Load existing highlights
@@ -965,7 +1056,7 @@ async def create_highlight(book_id: str, request: Request):
         # Save
         save_highlights(highlights)
 
-        return {"success": True, "highlight": highlight}
+        return {"success": True, "highlight": hydrate_highlight_record(highlight)}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create highlight: {e}")
@@ -992,13 +1083,146 @@ async def update_highlight(highlight_id: str, request: Request):
         if "note" in body:
             highlights[book_id]["highlights"][idx]["note"] = body["note"]
 
+        # Update tags
+        if "tags" in body:
+            highlights[book_id]["highlights"][idx]["tags"] = normalize_highlight_tags(body["tags"])
+
         # Save
         save_highlights(highlights)
 
-        return {"success": True, "highlight": highlights[book_id]["highlights"][idx]}
+        return {
+            "success": True,
+            "highlight": hydrate_highlight_record(highlights[book_id]["highlights"][idx])
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update highlight: {e}")
+
+
+@app.post("/api/highlights/bulk/tags")
+async def bulk_update_highlight_tags(request: Request):
+    """
+    Bulk update highlight tags.
+
+    Expected JSON body:
+    {
+        "highlight_ids": ["id1", "id2"],
+        "tags": ["tag1", "tag2"],
+        "mode": "add" | "set" | "remove"
+    }
+    """
+    try:
+        body = await request.json()
+        highlight_ids = parse_highlight_ids(body.get("highlight_ids", []))
+        if not highlight_ids:
+            raise HTTPException(status_code=400, detail="highlight_ids must contain at least one id")
+
+        mode = str(body.get("mode", "add")).strip().lower()
+        if mode not in {"add", "set", "remove"}:
+            raise HTTPException(status_code=400, detail="mode must be one of: add, set, remove")
+
+        tags = normalize_highlight_tags(body.get("tags", []))
+        if not tags:
+            raise HTTPException(status_code=400, detail="tags must contain at least one valid tag")
+
+        highlights = load_highlights()
+
+        id_set = set(highlight_ids)
+        found_ids = set()
+        updated_highlights: List[Dict[str, Any]] = []
+        remove_tags = set(tags)
+
+        for book_data in highlights.values():
+            for highlight in book_data.get("highlights", []):
+                highlight_id = str(highlight.get("id", ""))
+                if highlight_id not in id_set:
+                    continue
+
+                found_ids.add(highlight_id)
+                existing_tags = normalize_highlight_tags(highlight.get("tags", []))
+
+                if mode == "set":
+                    next_tags = list(tags)
+                elif mode == "remove":
+                    next_tags = [tag for tag in existing_tags if tag not in remove_tags]
+                else:
+                    next_tags = list(existing_tags)
+                    for tag in tags:
+                        if tag in next_tags:
+                            continue
+                        next_tags.append(tag)
+                        if len(next_tags) >= MAX_HIGHLIGHT_TAGS:
+                            break
+
+                highlight["tags"] = next_tags
+                updated_highlights.append(hydrate_highlight_record(highlight))
+
+        if not updated_highlights:
+            raise HTTPException(status_code=404, detail="No matching highlights found")
+
+        save_highlights(highlights)
+
+        missing_ids = [highlight_id for highlight_id in highlight_ids if highlight_id not in found_ids]
+        return {
+            "success": True,
+            "mode": mode,
+            "updated_count": len(updated_highlights),
+            "updated_highlights": updated_highlights,
+            "missing_ids": missing_ids,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to bulk update highlight tags: {e}")
+
+
+@app.post("/api/highlights/bulk/delete")
+async def bulk_delete_highlights(request: Request):
+    """
+    Delete multiple highlights by id.
+
+    Expected JSON body:
+    {
+        "highlight_ids": ["id1", "id2"]
+    }
+    """
+    try:
+        body = await request.json()
+        highlight_ids = parse_highlight_ids(body.get("highlight_ids", []))
+        if not highlight_ids:
+            raise HTTPException(status_code=400, detail="highlight_ids must contain at least one id")
+
+        highlights = load_highlights()
+        id_set = set(highlight_ids)
+        found_ids = set()
+
+        for book_data in highlights.values():
+            kept_highlights = []
+            for highlight in book_data.get("highlights", []):
+                highlight_id = str(highlight.get("id", ""))
+                if highlight_id in id_set:
+                    found_ids.add(highlight_id)
+                    continue
+                kept_highlights.append(highlight)
+            book_data["highlights"] = kept_highlights
+
+        deleted_ids = [highlight_id for highlight_id in highlight_ids if highlight_id in found_ids]
+        if not deleted_ids:
+            raise HTTPException(status_code=404, detail="No matching highlights found")
+
+        save_highlights(highlights)
+
+        missing_ids = [highlight_id for highlight_id in highlight_ids if highlight_id not in found_ids]
+        return {
+            "success": True,
+            "deleted_count": len(deleted_ids),
+            "deleted_ids": deleted_ids,
+            "missing_ids": missing_ids,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to bulk delete highlights: {e}")
 
 
 @app.delete("/api/highlights/{highlight_id}")
@@ -1055,19 +1279,24 @@ async def highlights_page(request: Request):
 
     # Build a structured view for the template
     books_highlights = []
+    all_highlight_tags = set()
 
     for book_id in sorted(highlights_data.keys()):
         book = load_book_cached(book_id)
         if not book:
             continue
 
-        book_highlights = highlights_data[book_id].get('highlights', [])
+        book_highlights = [
+            hydrate_highlight_record(hl)
+            for hl in highlights_data[book_id].get('highlights', [])
+        ]
         if not book_highlights:
             continue
 
         # Group by chapter
         by_chapter: Dict[int, List[Dict]] = {}
         for hl in book_highlights:
+            all_highlight_tags.update(hl.get("tags", []))
             ch_idx = hl.get('chapter_index', 0)
             if ch_idx not in by_chapter:
                 by_chapter[ch_idx] = []
@@ -1092,7 +1321,8 @@ async def highlights_page(request: Request):
         })
 
     return templates.TemplateResponse(request, "highlights.html", {
-        "books": books_highlights
+        "books": books_highlights,
+        "all_highlight_tags": sorted(all_highlight_tags),
     })
 
 
