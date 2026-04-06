@@ -1285,13 +1285,15 @@
         // Pass the spine data from python to JS
         const spineMap = {
             {% for ch in book.spine %}
-            "{{ ch.href }}": {{ ch.order }},
+            {{ ch.href | tojson }}: {{ ch.order }},
             {% endfor %}
         };
 
         function findAndGo(filename) {
             // The TOC usually has specific filenames e.g. "text/part001.html"
             // Sometimes it has anchors "text/part001.html#header"
+            // Decode URL-encoded characters (e.g. %27 → ') to match spineMap keys
+            try { filename = decodeURIComponent(filename); } catch(e) {}
             const cleanFile = filename.split('#')[0];
             const anchor = filename.split('#')[1];
 
