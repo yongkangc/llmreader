@@ -7,7 +7,7 @@
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#212529",
-  "orientation": "any",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/reader/static/icons/icon-192.png",
