@@ -173,7 +173,54 @@
         margin-bottom: var(--space-5);
     }
 
-    /* Book Section - using details/summary for collapsible */
+    /* Book Picker */
+    .book-picker {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding-bottom: var(--space-3);
+        margin-bottom: var(--space-5);
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+    .book-picker::-webkit-scrollbar { display: none; }
+    .book-picker-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-card);
+        color: var(--text-secondary);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        cursor: pointer;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: all 0.15s;
+        font-family: var(--font-sans);
+    }
+    .book-picker-item:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--border-medium);
+        color: var(--text-primary);
+    }
+    .book-picker-item.active {
+        background: var(--accent-primary);
+        color: white;
+        border-color: var(--accent-primary);
+    }
+    .book-picker-count {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        opacity: 0.7;
+    }
+    .book-picker-item.active .book-picker-count {
+        opacity: 0.85;
+    }
+
+    /* Book Section */
     .book-section {
         background: var(--bg-card);
         border: 1px solid var(--border-subtle);
@@ -181,6 +228,10 @@
         margin-bottom: var(--space-6);
         overflow: hidden;
         transition: box-shadow var(--transition);
+        display: none;
+    }
+    .book-section.visible {
+        display: block;
     }
     .book-section:hover {
         box-shadow: var(--shadow-sm);
@@ -192,13 +243,7 @@
         align-items: flex-start;
         padding: var(--space-5) var(--space-5);
         gap: var(--space-4);
-        cursor: pointer;
-        user-select: none;
         list-style: none;
-    }
-
-    .book-header::-webkit-details-marker {
-        display: none;
     }
 
     .book-header-left {
@@ -369,6 +414,12 @@
         .bulk-toolbar {
             top: 132px;
         }
+        .book-picker {
+            margin-left: calc(-1 * var(--space-4));
+            margin-right: calc(-1 * var(--space-4));
+            padding-left: var(--space-4);
+            padding-right: var(--space-4);
+        }
         .book-header {
             flex-direction: column;
             padding: var(--space-4);
@@ -414,15 +465,24 @@
             <a href="{{ root_path }}/" class="btn btn-primary">Go to Library</a>
         </div>
         {% else %}
+            <div class="book-picker" id="bookPicker">
+                {% for book in books %}
+                <button class="book-picker-item" data-book-id="{{ book.book_id }}" onclick="selectBook('{{ book.book_id }}')">
+                    {{ book.title | truncate(30) }}
+                    <span class="book-picker-count">{{ book.total_highlights }}</span>
+                </button>
+                {% endfor %}
+            </div>
+
             {% for book in books %}
-            <details class="book-section" open>
-                <summary class="book-header">
+            <div class="book-section" data-book-id="{{ book.book_id }}">
+                <div class="book-header">
                     <div class="book-header-left">
                         <h2 class="book-title">{{ book.title }}</h2>
                         <p class="book-author">{{ book.author }}</p>
                     </div>
                     <span class="highlight-count">{{ book.total_highlights }} highlight{{ 's' if book.total_highlights != 1 else '' }}</span>
-                </summary>
+                </div>
 
                 {% for chapter in book.chapters %}
                 <div class="chapter-section">
@@ -462,7 +522,7 @@
                     {% endfor %}
                 </div>
                 {% endfor %}
-            </details>
+            </div>
             {% endfor %}
         {% endif %}
     </div>
@@ -626,6 +686,41 @@
                 header.classList.toggle('scrolled', window.scrollY > 10);
             }, { passive: true });
         }
+
+        // Book picker selection
+        function selectBook(bookId) {
+            // Update pills
+            document.querySelectorAll('.book-picker-item').forEach(pill => {
+                pill.classList.toggle('active', pill.dataset.bookId === bookId);
+            });
+            // Show/hide sections
+            document.querySelectorAll('.book-section').forEach(section => {
+                section.classList.toggle('visible', section.dataset.bookId === bookId);
+            });
+            // Scroll active pill into view
+            const activePill = document.querySelector(`.book-picker-item[data-book-id="${bookId}"]`);
+            if (activePill) {
+                activePill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+            // Clear selections when switching books
+            clearSelectedHighlights();
+            // Persist
+            try { localStorage.setItem('highlights_selected_book', bookId); } catch(e) {}
+        }
+
+        // Initialize book picker
+        (function initBookPicker() {
+            const pills = document.querySelectorAll('.book-picker-item');
+            if (pills.length === 0) return;
+
+            let savedBookId = null;
+            try { savedBookId = localStorage.getItem('highlights_selected_book'); } catch(e) {}
+
+            // Check if saved book still exists in the list
+            const validPill = savedBookId && document.querySelector(`.book-picker-item[data-book-id="${savedBookId}"]`);
+            const targetBookId = validPill ? savedBookId : pills[0].dataset.bookId;
+            selectBook(targetBookId);
+        })();
 
         renderTagSuggestions();
     </script>
