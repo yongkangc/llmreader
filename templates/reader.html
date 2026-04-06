@@ -348,11 +348,98 @@
             color: var(--text-primary);
             white-space: pre-wrap;
         }
+        /* Inline note editing state */
+        .inline-note.editing {
+            cursor: default;
+            background: var(--bg-surface, #f8f9fa);
+            border-left-width: 3px;
+        }
+        .inline-note.editing:hover {
+            background: var(--bg-surface, #f8f9fa);
+        }
+        .inline-note .inline-note-editor {
+            display: none;
+        }
+        .inline-note.editing .inline-note-text {
+            display: none;
+        }
+        .inline-note.editing .inline-note-editor {
+            display: block;
+        }
+        .inline-note .inline-note-textarea {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid var(--border-medium);
+            border-radius: 4px;
+            font-family: var(--font-sans, -apple-system, sans-serif);
+            font-size: 1em;
+            line-height: 1.5;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            resize: none;
+            outline: none;
+            overflow: hidden;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+        .inline-note .inline-note-textarea:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+        .inline-note .inline-note-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 4px;
+            font-size: 0.75em;
+            color: var(--text-tertiary, var(--text-secondary));
+            opacity: 0.7;
+        }
+        .inline-note .inline-note-status .save-status {
+            transition: opacity 0.3s;
+        }
+        .inline-note .inline-note-hint {
+            font-size: 0.75em;
+            color: var(--text-tertiary, var(--text-secondary));
+            opacity: 0.5;
+        }
         body.dark-mode .inline-note {
             background: var(--bg-elevated, #1e1e1e);
         }
         body.dark-mode .inline-note:hover {
             background: var(--bg-button-hover);
+        }
+        body.dark-mode .inline-note.editing {
+            background: var(--bg-elevated, #1e1e1e);
+        }
+        body.dark-mode .inline-note.editing:hover {
+            background: var(--bg-elevated, #1e1e1e);
+        }
+        body.dark-mode .inline-note .inline-note-textarea {
+            background: var(--bg-main);
+        }
+        /* Empty note placeholder - shown when highlight has no note yet */
+        .inline-note-placeholder {
+            display: block;
+            margin: 4px 0 6px 0;
+            padding: 4px 10px;
+            border-left: 3px solid transparent;
+            border-radius: 0 4px 4px 0;
+            font-family: var(--font-sans, -apple-system, sans-serif);
+            font-size: 0.82em;
+            color: var(--text-tertiary, var(--text-secondary));
+            opacity: 0;
+            cursor: pointer;
+            transition: opacity 0.2s, border-color 0.2s;
+        }
+        .inline-note-placeholder:hover {
+            opacity: 0.6;
+            border-left-color: var(--accent-primary);
+        }
+        /* Show placeholder when parent highlight mark is hovered */
+        mark.highlight:hover + .inline-note-placeholder,
+        .inline-note-placeholder:hover {
+            opacity: 0.6;
         }
 
         /* Undo Toast for Instant Highlight */
@@ -606,7 +693,7 @@
             display: block;
         }
 
-        /* Note Editor - Floating Panel */
+        /* Note Editor - Floating Panel (legacy, kept for popup-triggered editing) */
         .note-editor {
             position: absolute;
             background: var(--bg-main);
@@ -2255,53 +2342,51 @@
         }
 
         // Inline note management
+        let activeInlineEditor = null; // track currently editing note
+        let inlineNoteSaveTimers = {}; // debounce timers per highlight
+
+        function insertAfterBlock(mark, el) {
+            let blockParent = mark.parentElement;
+            while (blockParent && !['P', 'DIV', 'SECTION', 'LI', 'BLOCKQUOTE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(blockParent.tagName)) {
+                blockParent = blockParent.parentElement;
+            }
+            if (blockParent && blockParent.parentElement) {
+                blockParent.parentElement.insertBefore(el, blockParent.nextSibling);
+            } else {
+                mark.parentElement.insertBefore(el, mark.nextSibling);
+            }
+        }
+
         function createInlineNote(mark, highlightId, noteText) {
             if (!noteText || !noteText.trim()) return;
 
-            // Remove existing inline note if any
+            // Remove existing inline note / placeholder if any
             removeInlineNote(highlightId);
 
             const noteEl = document.createElement('div');
             noteEl.className = 'inline-note';
             noteEl.dataset.forHighlight = highlightId;
-            noteEl.innerHTML = `
-                <div class="inline-note-label">
-                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10z"/></svg>
-                    Note
-                </div>
-                <div class="inline-note-text">${escapeHtml(noteText)}</div>
-            `;
+            noteEl.innerHTML = `<div class="inline-note-label"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10z"/></svg> Note</div><div class="inline-note-text">${escapeHtml(noteText)}</div><div class="inline-note-editor"><textarea class="inline-note-textarea" placeholder="Add your thoughts..."></textarea><div class="inline-note-status"><span class="save-status"></span><span class="inline-note-hint">Esc to close</span></div></div>`;
 
-            // Click on inline note scrolls to the highlight and opens popup
+            // Click on inline note → open in-place editor
             noteEl.addEventListener('click', (e) => {
                 e.stopPropagation();
-                scrollToElementAndHighlight(mark);
-                // Show the popup after scrolling
-                setTimeout(() => {
-                    showHighlightPopup({ stopPropagation: () => {}, target: mark }, highlightId);
-                }, 400);
+                if (!noteEl.classList.contains('editing')) {
+                    openInlineEditor(noteEl, highlightId);
+                }
             });
 
-            // Insert after the mark element's parent block
-            // Find the closest block-level parent to insert after
-            let insertAfter = mark;
-            // Walk up to find the nearest block element (p, div, li, etc.)
-            let blockParent = mark.parentElement;
-            while (blockParent && !['P', 'DIV', 'SECTION', 'LI', 'BLOCKQUOTE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(blockParent.tagName)) {
-                blockParent = blockParent.parentElement;
-            }
-
-            if (blockParent && blockParent.parentElement) {
-                blockParent.parentElement.insertBefore(noteEl, blockParent.nextSibling);
-            } else {
-                // Fallback: insert right after the mark
-                mark.parentElement.insertBefore(noteEl, mark.nextSibling);
-            }
+            insertAfterBlock(mark, noteEl);
         }
 
         function removeInlineNote(highlightId) {
             const existing = document.querySelector(`.inline-note[data-for-highlight="${highlightId}"]`);
-            if (existing) existing.remove();
+            if (existing) {
+                if (existing.classList.contains('editing')) closeInlineEditor(existing, false);
+                existing.remove();
+            }
+            const placeholder = document.querySelector(`.inline-note-placeholder[data-for-highlight="${highlightId}"]`);
+            if (placeholder) placeholder.remove();
         }
 
         function updateInlineNote(highlightId, noteText) {
@@ -2312,6 +2397,127 @@
                 createInlineNote(mark, highlightId, noteText);
             } else {
                 removeInlineNote(highlightId);
+            }
+        }
+
+        function openInlineEditor(noteEl, highlightId) {
+            // Close any other active editor
+            if (activeInlineEditor && activeInlineEditor !== noteEl) {
+                closeInlineEditor(activeInlineEditor, true);
+            }
+
+            noteEl.classList.add('editing');
+            activeInlineEditor = noteEl;
+
+            const textarea = noteEl.querySelector('.inline-note-textarea');
+            const highlight = findHighlightById(highlightId);
+            textarea.value = highlight?.note || '';
+            autoGrowTextarea(textarea);
+            textarea.focus();
+            // Place cursor at end
+            textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+
+            // Update label
+            const label = noteEl.querySelector('.inline-note-label');
+            label.innerHTML = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10z"/></svg> Editing`;
+
+            // Auto-save on input with debounce
+            textarea._inputHandler = () => {
+                autoGrowTextarea(textarea);
+                debouncedSaveInlineNote(highlightId, textarea);
+            };
+            textarea.addEventListener('input', textarea._inputHandler);
+
+            // Escape to close
+            textarea._keydownHandler = (e) => {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeInlineEditor(noteEl, true);
+                }
+            };
+            textarea.addEventListener('keydown', textarea._keydownHandler);
+        }
+
+        function closeInlineEditor(noteEl, save) {
+            if (!noteEl || !noteEl.classList.contains('editing')) return;
+
+            const highlightId = noteEl.dataset.forHighlight;
+            const textarea = noteEl.querySelector('.inline-note-textarea');
+
+            // Clean up listeners
+            if (textarea._inputHandler) textarea.removeEventListener('input', textarea._inputHandler);
+            if (textarea._keydownHandler) textarea.removeEventListener('keydown', textarea._keydownHandler);
+
+            // Flush any pending save
+            if (inlineNoteSaveTimers[highlightId]) {
+                clearTimeout(inlineNoteSaveTimers[highlightId]);
+                delete inlineNoteSaveTimers[highlightId];
+            }
+
+            const noteText = textarea.value.trim();
+
+            if (save && noteText) {
+                // Fire final save
+                saveInlineNoteToServer(highlightId, noteText);
+            }
+
+            noteEl.classList.remove('editing');
+            activeInlineEditor = null;
+
+            // If note is now empty, remove the inline note element
+            if (!noteText) {
+                saveInlineNoteToServer(highlightId, '');
+                noteEl.remove();
+                return;
+            }
+
+            // Update the display text
+            const textEl = noteEl.querySelector('.inline-note-text');
+            textEl.textContent = noteText;
+
+            // Restore label
+            const label = noteEl.querySelector('.inline-note-label');
+            label.innerHTML = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10z"/></svg> Note`;
+        }
+
+        function autoGrowTextarea(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+
+        function debouncedSaveInlineNote(highlightId, textarea) {
+            const statusEl = textarea.closest('.inline-note').querySelector('.save-status');
+
+            if (inlineNoteSaveTimers[highlightId]) {
+                clearTimeout(inlineNoteSaveTimers[highlightId]);
+            }
+
+            inlineNoteSaveTimers[highlightId] = setTimeout(async () => {
+                const noteText = textarea.value.trim();
+                if (statusEl) { statusEl.textContent = 'Saving...'; statusEl.style.opacity = '1'; }
+                await saveInlineNoteToServer(highlightId, noteText);
+                if (statusEl) {
+                    statusEl.textContent = 'Saved';
+                    setTimeout(() => { statusEl.style.opacity = '0'; }, 1500);
+                }
+                delete inlineNoteSaveTimers[highlightId];
+            }, 600);
+        }
+
+        async function saveInlineNoteToServer(highlightId, noteText) {
+            try {
+                const response = await fetch(`{{ root_path }}/api/highlights/${highlightId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ note: noteText })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    const updated = upsertLoadedHighlight(result.highlight);
+                    updateHighlightMarkMetadata(updated);
+                }
+            } catch (error) {
+                console.error('Failed to save note:', error);
             }
         }
 
@@ -2333,57 +2539,45 @@
             });
         }
 
-        // Toggle note editor
+        // Toggle note editor — now uses in-place editing on the inline note
         function toggleNoteEditor() {
-            const editor = document.getElementById('noteEditor');
-            const input = document.getElementById('noteInput');
-            const popup = document.getElementById('highlightPopup');
+            const highlightId = currentHighlightId;
+            if (!highlightId) return;
 
-            if (editor.classList.contains('show')) {
-                editor.classList.remove('show');
-            } else {
-                // Position editor below the popup
-                const popupRect = popup.getBoundingClientRect();
-                const containerRect = document.querySelector('.content-container').getBoundingClientRect();
+            hideHighlightPopup();
 
-                editor.style.top = `${popupRect.bottom - containerRect.top + 4}px`;
-                editor.style.left = `${popupRect.left - containerRect.left}px`;
+            const highlight = findHighlightById(highlightId);
+            const mark = document.querySelector(`mark[data-highlight-id="${highlightId}"]`);
+            if (!mark) return;
 
-                // Load existing note
-                const highlight = findHighlightById(currentHighlightId);
-                input.value = highlight?.note || '';
-                editor.classList.add('show');
-                input.focus();
+            // Ensure inline note element exists (create one if note is empty)
+            let noteEl = document.querySelector(`.inline-note[data-for-highlight="${highlightId}"]`);
+            if (!noteEl) {
+                // Create a blank inline note to edit
+                createInlineNote(mark, highlightId, highlight?.note || ' ');
+                noteEl = document.querySelector(`.inline-note[data-for-highlight="${highlightId}"]`);
+                if (!noteEl) return;
+                // If it was a blank placeholder, clear the text
+                if (!highlight?.note) {
+                    noteEl.querySelector('.inline-note-text').textContent = '';
+                }
             }
+
+            // Open the in-place editor
+            openInlineEditor(noteEl, highlightId);
+
+            // Scroll to make the editor visible
+            noteEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        // Save note
+        // Save note (legacy — kept for compatibility, uses new inline save)
         async function saveNote() {
             const note = document.getElementById('noteInput').value.trim();
-
-            try {
-                const response = await fetch(`{{ root_path }}/api/highlights/${currentHighlightId}`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({note: note})
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    const updatedHighlight = upsertLoadedHighlight(result.highlight);
-                    updateHighlightMarkMetadata(updatedHighlight);
-
-                    // Update inline note
-                    updateInlineNote(updatedHighlight.id, updatedHighlight.note);
-                    renderHighlightPopupTags(updatedHighlight);
-
-                    document.getElementById('noteEditor').classList.remove('show');
-                    hideHighlightPopup();
-                }
-            } catch (error) {
-                console.error('Failed to save note:', error);
-            }
+            if (!currentHighlightId) return;
+            await saveInlineNoteToServer(currentHighlightId, note);
+            updateInlineNote(currentHighlightId, note);
+            document.getElementById('noteEditor').classList.remove('show');
+            hideHighlightPopup();
         }
 
         // Remove highlight
@@ -2488,6 +2682,10 @@
         function handleOutsideInteraction(e) {
             if (!e.target.closest('.highlight-popup') && !e.target.closest('.highlight') && !e.target.closest('.inline-note') && !e.target.closest('.note-editor')) {
                 hideHighlightPopup();
+                // Close active inline editor when clicking outside
+                if (activeInlineEditor && !e.target.closest('.inline-note')) {
+                    closeInlineEditor(activeInlineEditor, true);
+                }
             }
             // Don't hide undo toast here - it has its own auto-hide timer
             // and we don't want to interfere with the highlight creation flow
