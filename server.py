@@ -374,9 +374,10 @@ def get_highlight_by_id(highlight_id: str) -> tuple[Optional[str], Optional[Dict
     return None, None, None
 
 
-def export_to_obsidian_markdown() -> str:
+def export_to_obsidian_markdown(filter_book_id: str = "") -> str:
     """
-    Export all highlights to Obsidian-compatible markdown format.
+    Export highlights to Obsidian-compatible markdown format.
+    If filter_book_id is provided, only export that book's highlights.
     Returns markdown string.
     """
     highlights = load_highlights()
@@ -386,7 +387,8 @@ def export_to_obsidian_markdown() -> str:
 
     lines = ["# Reading Highlights\n"]
 
-    for book_id in sorted(highlights.keys()):
+    book_ids = [filter_book_id] if filter_book_id and filter_book_id in highlights else sorted(highlights.keys())
+    for book_id in book_ids:
         book_data = highlights[book_id]
         book_highlights = [
             hydrate_highlight_record(hl)
@@ -1303,14 +1305,20 @@ async def delete_highlight(highlight_id: str):
 
 
 @app.get("/api/highlights/export/markdown")
-async def export_highlights_markdown():
+async def export_highlights_markdown(book_id: str = ""):
     """
-    Export all highlights as Obsidian-compatible markdown.
+    Export highlights as Obsidian-compatible markdown.
+    If book_id is provided, only export that book's highlights.
     """
-    markdown_content = export_to_obsidian_markdown()
+    markdown_content = export_to_obsidian_markdown(filter_book_id=book_id)
 
     # Generate filename with date
-    filename = f"highlights-{datetime.now().strftime('%Y%m%d')}.md"
+    if book_id:
+        book = load_book_cached(book_id)
+        book_slug = (book.metadata.title if book else book_id).replace(" ", "-").lower()[:40]
+        filename = f"highlights-{book_slug}-{datetime.now().strftime('%Y%m%d')}.md"
+    else:
+        filename = f"highlights-{datetime.now().strftime('%Y%m%d')}.md"
 
     return Response(
         content=markdown_content,

@@ -12,7 +12,6 @@
     <link rel="stylesheet" href="{{ root_path }}/static/theme.css">
     <link rel="stylesheet" href="{{ root_path }}/static/app.css">
     <style>
-    /* Page-specific styles for Highlights */
     .page-highlights {
         font-family: var(--font-sans);
         min-height: 100vh;
@@ -21,49 +20,92 @@
     .container {
         max-width: 760px;
         margin: 0 auto;
-        padding: var(--space-8) var(--space-5);
+        padding: var(--space-6) var(--space-5);
     }
 
-    /* Sticky Header */
+    /* ── Sticky Header ── */
     .header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: var(--space-7);
-        gap: var(--space-4);
-        flex-wrap: wrap;
+        gap: var(--space-3);
         position: sticky;
         top: 0;
         background: var(--bg-main);
-        padding: var(--space-4) 0;
+        padding: var(--space-3) 0;
         z-index: 20;
         border-bottom: 1px solid transparent;
         transition: border-color var(--transition);
     }
-
-    .header.scrolled {
-        border-bottom-color: var(--border-subtle);
-    }
+    .header.scrolled { border-bottom-color: var(--border-subtle); }
 
     .header h1 {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
         font-weight: 700;
         letter-spacing: -0.03em;
         color: var(--text-primary);
+        white-space: nowrap;
     }
 
     .header-actions {
         display: flex;
         gap: var(--space-2);
         align-items: center;
+        flex-shrink: 0;
     }
 
+    /* ── Buttons ── */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 7px 14px;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all var(--transition);
+        text-decoration: none;
+        border: none;
+        font-family: var(--font-sans);
+        white-space: nowrap;
+    }
+    .btn-primary { background: var(--accent-primary); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary {
+        background: var(--bg-card);
+        color: var(--text-primary);
+        border: 1px solid var(--border-subtle);
+    }
+    .btn-secondary:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--border-medium);
+    }
+    .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+        padding: 7px;
+    }
+    .btn-ghost:hover {
+        background: var(--bg-card-hover);
+        color: var(--text-primary);
+    }
+    .btn-danger {
+        background: rgba(220, 53, 69, 0.12);
+        color: #dc3545;
+    }
+    .btn-danger:hover { background: rgba(220, 53, 69, 0.18); }
+
+    .btn svg { flex-shrink: 0; }
+
+    /* ── Bulk Toolbar ── */
     .bulk-toolbar {
         display: none;
         position: sticky;
-        top: 84px;
+        top: 52px;
         z-index: 19;
-        margin-bottom: var(--space-5);
+        margin-bottom: var(--space-4);
         padding: var(--space-3);
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-lg);
@@ -73,10 +115,7 @@
         flex-wrap: wrap;
         align-items: center;
     }
-
-    .bulk-toolbar.show {
-        display: flex;
-    }
+    .bulk-toolbar.show { display: flex; }
 
     .bulk-count {
         font-size: 0.8125rem;
@@ -88,75 +127,23 @@
         padding: 6px 10px;
         white-space: nowrap;
     }
-
     .bulk-toolbar input {
-        flex: 1 1 220px;
-        min-width: 180px;
-        padding: 10px 12px;
+        flex: 1 1 180px;
+        min-width: 140px;
+        padding: 8px 12px;
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-sm);
         background: var(--bg-main);
         color: var(--text-primary);
         font-family: var(--font-sans);
-        font-size: 0.875rem;
+        font-size: 0.8125rem;
     }
-
     .bulk-toolbar input:focus {
         outline: none;
         border-color: var(--accent-primary);
     }
 
-    .btn-danger {
-        background: rgba(220, 53, 69, 0.12);
-        color: #dc3545;
-    }
-    .btn-danger:hover {
-        background: rgba(220, 53, 69, 0.18);
-    }
-
-    .btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: var(--space-2) var(--space-4);
-        font-size: 0.875rem;
-        font-weight: 500;
-        border-radius: var(--radius-sm);
-        cursor: pointer;
-        transition: all var(--transition);
-        text-decoration: none;
-        border: none;
-        font-family: var(--font-sans);
-    }
-
-    .btn-primary {
-        background: var(--accent-primary);
-        color: white;
-    }
-    .btn-primary:hover { background: var(--accent-hover); }
-
-    .btn-secondary {
-        background: var(--bg-card);
-        color: var(--text-primary);
-        border: 1px solid var(--border-subtle);
-    }
-    .btn-secondary:hover {
-        background: var(--bg-card-hover);
-        border-color: var(--border-medium);
-    }
-
-    .btn-ghost {
-        background: transparent;
-        color: var(--text-secondary);
-        padding: var(--space-2);
-    }
-    .btn-ghost:hover {
-        background: var(--bg-card-hover);
-        color: var(--text-primary);
-    }
-
-    /* Empty State */
+    /* ── Empty State ── */
     .empty-state {
         text-align: center;
         padding: 100px var(--space-5);
@@ -173,22 +160,22 @@
         margin-bottom: var(--space-5);
     }
 
-    /* Book Picker */
+    /* ── Book Picker ── */
     .book-picker {
         display: flex;
         gap: 6px;
         overflow-x: auto;
-        padding-bottom: var(--space-3);
-        margin-bottom: var(--space-5);
+        padding: var(--space-4) 0 var(--space-3);
         scrollbar-width: none;
         -webkit-overflow-scrolling: touch;
     }
     .book-picker::-webkit-scrollbar { display: none; }
+
     .book-picker-item {
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 8px 14px;
+        gap: 5px;
+        padding: 7px 13px;
         border-radius: 999px;
         border: 1px solid var(--border-subtle);
         background: var(--bg-card);
@@ -198,8 +185,9 @@
         cursor: pointer;
         white-space: nowrap;
         flex-shrink: 0;
-        transition: all 0.15s;
+        transition: all 0.15s ease;
         font-family: var(--font-sans);
+        -webkit-tap-highlight-color: transparent;
     }
     .book-picker-item:hover {
         background: var(--bg-card-hover);
@@ -210,140 +198,131 @@
         background: var(--accent-primary);
         color: white;
         border-color: var(--accent-primary);
+        box-shadow: 0 1px 4px color-mix(in srgb, var(--accent-primary) 30%, transparent);
     }
     .book-picker-count {
         font-size: 0.6875rem;
         font-weight: 600;
-        opacity: 0.7;
+        opacity: 0.6;
     }
-    .book-picker-item.active .book-picker-count {
-        opacity: 0.85;
-    }
+    .book-picker-item.active .book-picker-count { opacity: 0.85; }
 
-    /* Book Section */
+    /* ── Book Section ── */
     .book-section {
-        background: var(--bg-card);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-lg);
-        margin-bottom: var(--space-6);
-        overflow: hidden;
-        transition: box-shadow var(--transition);
         display: none;
+        opacity: 0;
+        transform: translateY(6px);
     }
     .book-section.visible {
         display: block;
+        animation: fadeInUp 0.2s ease forwards;
     }
-    .book-section:hover {
-        box-shadow: var(--shadow-sm);
+    @keyframes fadeInUp {
+        to { opacity: 1; transform: translateY(0); }
     }
 
-    .book-header {
+    .book-meta {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        padding: var(--space-5) var(--space-5);
-        gap: var(--space-4);
-        list-style: none;
+        align-items: baseline;
+        padding: var(--space-2) var(--space-1);
+        margin-bottom: var(--space-4);
     }
-
-    .book-header-left {
-        flex: 1;
+    .book-meta-left {
         min-width: 0;
     }
-
-    .book-title {
-        font-size: 1.0625rem;
+    .book-meta-title {
+        font-size: 1.125rem;
         font-weight: 600;
         color: var(--text-primary);
-        margin-bottom: 2px;
+        letter-spacing: -0.01em;
     }
-
-    .book-author {
+    .book-meta-author {
         font-size: 0.8125rem;
         color: var(--text-muted);
+        margin-top: 1px;
     }
-
-    .highlight-count {
+    .book-meta-count {
         font-size: 0.75rem;
         font-weight: 500;
         color: var(--text-muted);
-        background: var(--bg-surface);
-        padding: 4px 12px;
-        border-radius: 20px;
         white-space: nowrap;
         flex-shrink: 0;
     }
 
-    /* Chapter Section */
+    /* ── Chapter Section ── */
     .chapter-section {
-        padding: var(--space-5);
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        margin-bottom: var(--space-4);
+        overflow: hidden;
+        transition: box-shadow var(--transition);
     }
-    .chapter-section:not(:last-child) {
-        border-bottom: 1px solid var(--border-subtle);
-    }
+    .chapter-section:hover { box-shadow: var(--shadow-sm); }
 
     .chapter-title {
-        font-size: 0.75rem;
+        font-size: 0.6875rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         color: var(--text-muted);
-        margin-bottom: var(--space-4);
+        padding: var(--space-4) var(--space-4) var(--space-2);
     }
 
-    /* Highlight Item */
+    /* ── Highlight Item ── */
     .highlight-item {
-        padding: var(--space-4);
-        background: var(--bg-surface);
+        padding: var(--space-3) var(--space-4);
+        border-left: 3px solid transparent;
+        margin-left: var(--space-4);
+        margin-right: var(--space-4);
+        margin-bottom: var(--space-2);
         border-radius: var(--radius-sm);
-        border-left: 3px solid var(--highlight-border, #eab308);
-        margin-bottom: var(--space-3);
-        transition: background var(--transition), box-shadow var(--transition), border-color var(--transition);
+        transition: background var(--transition), border-color 0.15s;
+        position: relative;
     }
-    .highlight-item:last-child { margin-bottom: 0; }
-    .highlight-item:hover { background: var(--bg-card-hover); }
+    .highlight-item:last-child { margin-bottom: var(--space-4); }
+    .highlight-item:hover {
+        background: var(--bg-surface);
+        border-left-color: var(--highlight-border, #eab308);
+    }
     .highlight-item.selected {
         border-left-color: var(--accent-primary);
-        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-primary) 24%, transparent);
         background: color-mix(in srgb, var(--accent-light) 50%, var(--bg-surface) 50%);
     }
 
-    .highlight-item-head {
-        display: flex;
-        justify-content: flex-end;
-        margin-bottom: var(--space-2);
-    }
-
-    .highlight-select {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 0.6875rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--text-muted);
+    /* Checkbox — hidden until select-mode or hover */
+    .highlight-checkbox {
+        position: absolute;
+        top: var(--space-3);
+        right: var(--space-3);
+        opacity: 0;
+        transition: opacity 0.15s;
+        accent-color: var(--accent-primary);
+        width: 16px;
+        height: 16px;
         cursor: pointer;
     }
-
-    .highlight-select-checkbox {
-        accent-color: var(--accent-primary);
+    .highlight-item:hover .highlight-checkbox,
+    .highlight-item.selected .highlight-checkbox,
+    .select-mode .highlight-checkbox {
+        opacity: 1;
     }
 
     .highlight-text {
         font-size: 0.9375rem;
-        line-height: 1.75;
+        line-height: 1.7;
         color: var(--text-primary);
         font-family: var(--font-serif);
         font-style: italic;
+        padding-right: 20px;
     }
-
     .highlight-text::before { content: '\201C'; }
     .highlight-text::after { content: '\201D'; }
 
     .highlight-note {
-        margin-top: var(--space-3);
-        padding: var(--space-3);
+        margin-top: var(--space-2);
+        padding: var(--space-2) var(--space-3);
         background: var(--accent-light);
         border-radius: var(--radius-sm);
         font-size: 0.8125rem;
@@ -353,7 +332,7 @@
     .highlight-note strong {
         color: var(--accent-primary);
         font-weight: 600;
-        font-size: 0.75rem;
+        font-size: 0.6875rem;
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
@@ -361,19 +340,18 @@
     .highlight-tags {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
-        margin-top: var(--space-3);
+        gap: 4px;
+        margin-top: var(--space-2);
     }
-
     .highlight-tag {
         display: inline-flex;
         align-items: center;
-        padding: 4px 8px;
+        padding: 2px 7px;
         border-radius: 999px;
         background: var(--bg-main);
         color: var(--accent-primary);
         border: 1px solid var(--border-subtle);
-        font-size: 0.75rem;
+        font-size: 0.6875rem;
         font-weight: 600;
         line-height: 1;
     }
@@ -382,8 +360,8 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: var(--space-3);
-        font-size: 0.75rem;
+        margin-top: var(--space-2);
+        font-size: 0.6875rem;
         color: var(--text-muted);
     }
 
@@ -391,7 +369,7 @@
         color: var(--accent-primary);
         text-decoration: none;
         font-weight: 500;
-        padding: 4px 8px;
+        padding: 3px 6px;
         border-radius: var(--radius-sm);
         transition: all var(--transition);
     }
@@ -400,34 +378,49 @@
         color: var(--accent-hover);
     }
 
-    /* Responsive */
+    /* ── Responsive ── */
     @media (max-width: 640px) {
-        .container { padding: var(--space-5) var(--space-4); }
+        .container { padding: var(--space-4) 0; }
+
         .header {
-            flex-direction: column;
-            align-items: flex-start;
-            margin-bottom: var(--space-5);
-            padding: var(--space-3) 0;
+            padding: var(--space-3) var(--space-4);
+            margin: 0;
         }
-        .header h1 { font-size: 1.5rem; }
-        .header-actions { width: 100%; }
+        .header h1 { font-size: 1.25rem; }
+
         .bulk-toolbar {
-            top: 132px;
+            top: 48px;
+            margin: 0 var(--space-3) var(--space-3);
+            border-radius: var(--radius-sm);
         }
+
         .book-picker {
-            margin-left: calc(-1 * var(--space-4));
-            margin-right: calc(-1 * var(--space-4));
             padding-left: var(--space-4);
             padding-right: var(--space-4);
         }
-        .book-header {
-            flex-direction: column;
-            padding: var(--space-4);
+
+        .book-meta {
+            padding: 0 var(--space-4);
         }
-        .chapter-section { padding: var(--space-4); }
-        .highlight-item { padding: var(--space-3); }
+
+        .chapter-section {
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
+            margin-bottom: var(--space-3);
+        }
+        .chapter-title { padding: var(--space-3) var(--space-4) var(--space-2); }
+
+        .highlight-item {
+            margin-left: var(--space-3);
+            margin-right: var(--space-3);
+            padding: var(--space-3);
+        }
+        .highlight-text { font-size: 0.875rem; padding-right: 24px; }
+        .highlight-checkbox { opacity: 1; }
+
         .view-link {
-            padding: 6px 12px;
+            padding: 4px 8px;
             background: var(--accent-light);
         }
     }
@@ -439,10 +432,16 @@
         <header class="header">
             <h1>Highlights</h1>
             <div class="header-actions">
-                <a href="{{ root_path }}/" class="btn btn-secondary">← Library</a>
-                <a href="{{ root_path }}/api/highlights/export/markdown" class="btn btn-primary" download>Export</a>
+                <a href="{{ root_path }}/" class="btn btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 2L4 8l6 6"/></svg>
+                    Library
+                </a>
+                <button class="btn btn-secondary" id="exportBtn" title="Export current book">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 10v3h12v-3M8 2v8M5 5l3-3 3 3"/></svg>
+                    Export
+                </button>
                 <button class="btn btn-ghost" id="themeToggle" onclick="toggleDarkMode()" title="Toggle theme">
-                    <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" id="themeIcon">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="themeIcon">
                         <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"></path>
                     </svg>
                 </button>
@@ -450,11 +449,11 @@
         </header>
 
         <div class="bulk-toolbar" id="bulkToolbar">
-            <span class="bulk-count" id="bulkCount">0 selected highlights</span>
-            <input id="bulkTagInput" type="text" list="highlightTagSuggestions" placeholder="Add tags (comma separated)">
+            <span class="bulk-count" id="bulkCount">0 selected</span>
+            <input id="bulkTagInput" type="text" list="highlightTagSuggestions" placeholder="Tags (comma separated)">
             <button class="btn btn-primary" onclick="applyBulkTags()">Add tags</button>
-            <button class="btn btn-danger" onclick="deleteSelectedHighlights()">Delete selected</button>
-            <button class="btn btn-secondary" onclick="clearSelectedHighlights()">Clear</button>
+            <button class="btn btn-danger" onclick="deleteSelectedHighlights()">Delete</button>
+            <button class="btn btn-secondary" onclick="clearSelectedHighlights()">Cancel</button>
         </div>
         <datalist id="highlightTagSuggestions"></datalist>
 
@@ -468,7 +467,7 @@
             <div class="book-picker" id="bookPicker">
                 {% for book in books %}
                 <button class="book-picker-item" data-book-id="{{ book.book_id }}" onclick="selectBook('{{ book.book_id }}')">
-                    {{ book.title | truncate(30) }}
+                    {{ book.title | truncate(28) }}
                     <span class="book-picker-count">{{ book.total_highlights }}</span>
                 </button>
                 {% endfor %}
@@ -476,12 +475,12 @@
 
             {% for book in books %}
             <div class="book-section" data-book-id="{{ book.book_id }}">
-                <div class="book-header">
-                    <div class="book-header-left">
-                        <h2 class="book-title">{{ book.title }}</h2>
-                        <p class="book-author">{{ book.author }}</p>
+                <div class="book-meta">
+                    <div class="book-meta-left">
+                        <div class="book-meta-title">{{ book.title }}</div>
+                        <div class="book-meta-author">{{ book.author }}</div>
                     </div>
-                    <span class="highlight-count">{{ book.total_highlights }} highlight{{ 's' if book.total_highlights != 1 else '' }}</span>
+                    <span class="book-meta-count">{{ book.total_highlights }} highlight{{ 's' if book.total_highlights != 1 else '' }}</span>
                 </div>
 
                 {% for chapter in book.chapters %}
@@ -490,16 +489,9 @@
 
                     {% for highlight in chapter.highlights %}
                     <div class="highlight-item" data-highlight-id="{{ highlight.id }}">
-                        <div class="highlight-item-head">
-                            <label class="highlight-select">
-                                <input
-                                    type="checkbox"
-                                    class="highlight-select-checkbox"
-                                    onchange="toggleHighlightSelection('{{ highlight.id }}', this.checked)"
-                                >
-                                <span>Select</span>
-                            </label>
-                        </div>
+                        <input type="checkbox" class="highlight-checkbox"
+                            onchange="toggleHighlightSelection('{{ highlight.id }}', this.checked)"
+                            title="Select highlight">
                         <p class="highlight-text">{{ highlight.text }}</p>
 
                         {% if highlight.note %}
@@ -527,10 +519,11 @@
         {% endif %}
     </div>
 
-    <!-- Theme functions loaded from /static/theme-toggle.js -->
     <script>
+        const ROOT = '{{ root_path }}';
         const selectedHighlightIds = new Set();
         const knownHighlightTags = new Set({{ all_highlight_tags | tojson }});
+        let currentBookId = null;
 
         function escapeHtml(text) {
             const div = document.createElement('div');
@@ -542,7 +535,6 @@
             const rawTags = Array.isArray(tags)
                 ? tags
                 : (typeof tags === 'string' ? tags.split(',') : []);
-
             return rawTags
                 .map(tag => String(tag || '').trim().toLowerCase())
                 .filter(tag => tag && tag.length <= 30)
@@ -562,23 +554,22 @@
                 .join('');
         }
 
+        // ── Selection ──
         function setHighlightSelectionState(highlightId, isSelected) {
             const item = document.querySelector(`[data-highlight-id="${highlightId}"]`);
             if (!item) return;
-
             item.classList.toggle('selected', isSelected);
-            const checkbox = item.querySelector('.highlight-select-checkbox');
-            if (checkbox) {
-                checkbox.checked = isSelected;
-            }
+            const checkbox = item.querySelector('.highlight-checkbox');
+            if (checkbox) checkbox.checked = isSelected;
         }
 
         function updateBulkToolbar() {
             const toolbar = document.getElementById('bulkToolbar');
             const countLabel = document.getElementById('bulkCount');
             const count = selectedHighlightIds.size;
-            countLabel.textContent = `${count} selected highlight${count === 1 ? '' : 's'}`;
+            countLabel.textContent = `${count} selected`;
             toolbar.classList.toggle('show', count > 0);
+            document.querySelector('.container').classList.toggle('select-mode', count > 0);
         }
 
         function toggleHighlightSelection(highlightId, isSelected) {
@@ -587,15 +578,12 @@
             } else {
                 selectedHighlightIds.delete(highlightId);
             }
-
             setHighlightSelectionState(highlightId, isSelected);
             updateBulkToolbar();
         }
 
         function clearSelectedHighlights() {
-            Array.from(selectedHighlightIds).forEach(highlightId => {
-                setHighlightSelectionState(highlightId, false);
-            });
+            Array.from(selectedHighlightIds).forEach(id => setHighlightSelectionState(id, false));
             selectedHighlightIds.clear();
             updateBulkToolbar();
         }
@@ -603,7 +591,6 @@
         function renderHighlightTags(highlightId, tags) {
             const container = document.getElementById(`highlight-tags-${highlightId}`);
             if (!container) return;
-
             const normalizedTags = normalizeHighlightTags(tags);
             normalizedTags.forEach(tag => knownHighlightTags.add(tag));
             container.hidden = normalizedTags.length === 0;
@@ -616,7 +603,6 @@
         async function applyBulkTags() {
             const highlightIds = Array.from(selectedHighlightIds);
             if (highlightIds.length === 0) return;
-
             const tagInput = document.getElementById('bulkTagInput');
             const tags = parseHighlightTagInput(tagInput.value);
             if (tags.length === 0) {
@@ -624,26 +610,15 @@
                 tagInput.focus();
                 return;
             }
-
             try {
-                const response = await fetch(`{{ root_path }}/api/highlights/bulk/tags`, {
+                const response = await fetch(`${ROOT}/api/highlights/bulk/tags`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        highlight_ids: highlightIds,
-                        tags: tags,
-                        mode: 'add'
-                    })
+                    body: JSON.stringify({ highlight_ids: highlightIds, tags, mode: 'add' })
                 });
                 const result = await response.json();
-
-                if (!response.ok || !result.success) {
-                    throw new Error(result.detail || 'Failed to update highlight tags');
-                }
-
-                result.updated_highlights.forEach(highlight => {
-                    renderHighlightTags(highlight.id, highlight.tags || []);
-                });
+                if (!response.ok || !result.success) throw new Error(result.detail || 'Failed');
+                result.updated_highlights.forEach(hl => renderHighlightTags(hl.id, hl.tags || []));
                 tagInput.value = '';
             } catch (error) {
                 console.error('Failed to apply bulk tags:', error);
@@ -654,32 +629,62 @@
         async function deleteSelectedHighlights() {
             const highlightIds = Array.from(selectedHighlightIds);
             if (highlightIds.length === 0) return;
-
-            const confirmed = window.confirm(
-                `Delete ${highlightIds.length} selected highlight${highlightIds.length === 1 ? '' : 's'}?`
-            );
-            if (!confirmed) return;
-
+            if (!confirm(`Delete ${highlightIds.length} highlight${highlightIds.length === 1 ? '' : 's'}?`)) return;
             try {
-                const response = await fetch(`{{ root_path }}/api/highlights/bulk/delete`, {
+                const response = await fetch(`${ROOT}/api/highlights/bulk/delete`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({highlight_ids: highlightIds})
+                    body: JSON.stringify({ highlight_ids: highlightIds })
                 });
                 const result = await response.json();
-
-                if (!response.ok || !result.success) {
-                    throw new Error(result.detail || 'Failed to delete highlights');
-                }
-
+                if (!response.ok || !result.success) throw new Error(result.detail || 'Failed');
                 window.location.reload();
             } catch (error) {
-                console.error('Failed to bulk delete highlights:', error);
-                alert('Failed to delete selected highlights. Please try again.');
+                console.error('Failed to delete:', error);
+                alert('Failed to delete. Please try again.');
             }
         }
 
-        // Show border on sticky header when scrolled
+        // ── Book Picker ──
+        function selectBook(bookId) {
+            currentBookId = bookId;
+            document.querySelectorAll('.book-picker-item').forEach(pill => {
+                pill.classList.toggle('active', pill.dataset.bookId === bookId);
+            });
+            document.querySelectorAll('.book-section').forEach(section => {
+                section.classList.toggle('visible', section.dataset.bookId === bookId);
+            });
+            const activePill = document.querySelector(`.book-picker-item[data-book-id="${bookId}"]`);
+            if (activePill) {
+                activePill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+            clearSelectedHighlights();
+            try { localStorage.setItem('highlights_selected_book', bookId); } catch(e) {}
+        }
+
+        // ── Export (per-book) ──
+        document.getElementById('exportBtn')?.addEventListener('click', () => {
+            const bookParam = currentBookId ? `?book_id=${encodeURIComponent(currentBookId)}` : '';
+            const link = document.createElement('a');
+            link.href = `${ROOT}/api/highlights/export/markdown${bookParam}`;
+            link.download = '';
+            link.click();
+        });
+
+        // ── Keyboard navigation for book picker ──
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+            const pills = Array.from(document.querySelectorAll('.book-picker-item'));
+            if (pills.length === 0) return;
+            const idx = pills.findIndex(p => p.classList.contains('active'));
+            const next = e.key === 'ArrowRight'
+                ? Math.min(idx + 1, pills.length - 1)
+                : Math.max(idx - 1, 0);
+            if (next !== idx) selectBook(pills[next].dataset.bookId);
+        });
+
+        // ── Sticky header border ──
         const header = document.querySelector('.header');
         if (header) {
             window.addEventListener('scroll', () => {
@@ -687,39 +692,14 @@
             }, { passive: true });
         }
 
-        // Book picker selection
-        function selectBook(bookId) {
-            // Update pills
-            document.querySelectorAll('.book-picker-item').forEach(pill => {
-                pill.classList.toggle('active', pill.dataset.bookId === bookId);
-            });
-            // Show/hide sections
-            document.querySelectorAll('.book-section').forEach(section => {
-                section.classList.toggle('visible', section.dataset.bookId === bookId);
-            });
-            // Scroll active pill into view
-            const activePill = document.querySelector(`.book-picker-item[data-book-id="${bookId}"]`);
-            if (activePill) {
-                activePill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-            }
-            // Clear selections when switching books
-            clearSelectedHighlights();
-            // Persist
-            try { localStorage.setItem('highlights_selected_book', bookId); } catch(e) {}
-        }
-
-        // Initialize book picker
-        (function initBookPicker() {
+        // ── Init ──
+        (function() {
             const pills = document.querySelectorAll('.book-picker-item');
             if (pills.length === 0) return;
-
             let savedBookId = null;
             try { savedBookId = localStorage.getItem('highlights_selected_book'); } catch(e) {}
-
-            // Check if saved book still exists in the list
             const validPill = savedBookId && document.querySelector(`.book-picker-item[data-book-id="${savedBookId}"]`);
-            const targetBookId = validPill ? savedBookId : pills[0].dataset.bookId;
-            selectBook(targetBookId);
+            selectBook(validPill ? savedBookId : pills[0].dataset.bookId);
         })();
 
         renderTagSuggestions();
