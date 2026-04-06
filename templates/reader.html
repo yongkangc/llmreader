@@ -1507,6 +1507,38 @@
             updateActiveTOCItem();
         });
 
+        // ── Preserve scroll position across orientation changes / resizes ──
+        (function() {
+            const main = document.getElementById('main');
+            if (!main) return;
+            let scrollRatio = 0;
+            let resizing = false;
+
+            // Track scroll position as a ratio (resilient to layout changes)
+            main.addEventListener('scroll', () => {
+                if (resizing) return;
+                const maxScroll = main.scrollHeight - main.clientHeight;
+                scrollRatio = maxScroll > 0 ? main.scrollTop / maxScroll : 0;
+            }, { passive: true });
+
+            // On resize/orientation change, restore position after layout settles
+            function onLayoutChange() {
+                resizing = true;
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        const maxScroll = main.scrollHeight - main.clientHeight;
+                        if (maxScroll > 0) {
+                            main.scrollTop = scrollRatio * maxScroll;
+                        }
+                        resizing = false;
+                    });
+                });
+            }
+
+            window.addEventListener('resize', onLayoutChange);
+            screen.orientation?.addEventListener('change', onLayoutChange);
+        })();
+
         function copyChapter() {
             const content = document.getElementById('chapterContent');
             const text = content.innerText || content.textContent;
