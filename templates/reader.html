@@ -862,6 +862,114 @@
             font-family: 'SF Mono', Menlo, Consolas, monospace;
         }
 
+        /* Search Bar */
+        .search-bar {
+            position: sticky;
+            top: 0;
+            z-index: 16;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--bg-elevated, var(--bg-main));
+            border-bottom: 1px solid var(--border-medium);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            font-family: var(--font-sans, -apple-system, sans-serif);
+        }
+        .search-bar.show {
+            display: flex;
+        }
+        .search-bar input {
+            flex: 1;
+            min-width: 0;
+            padding: 8px 12px;
+            border: 1px solid var(--border-medium);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-bar input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+        .search-bar .search-info {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            min-width: 60px;
+            text-align: center;
+        }
+        .search-bar .search-nav-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--bg-button);
+            color: var(--text-secondary);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            padding: 0;
+        }
+        .search-bar .search-nav-btn:hover:not(:disabled) {
+            background: var(--bg-button-hover);
+            color: var(--text-primary);
+            border-color: var(--border-light);
+        }
+        .search-bar .search-nav-btn:disabled {
+            opacity: 0.3;
+            cursor: default;
+        }
+        .search-bar .search-close-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            padding: 0;
+        }
+        .search-bar .search-close-btn:hover {
+            background: var(--bg-button-hover);
+            color: var(--text-primary);
+        }
+        /* Search match highlights */
+        .search-match {
+            background: rgba(234, 179, 8, 0.35);
+            border-radius: 2px;
+        }
+        .search-match.current {
+            background: rgba(234, 135, 8, 0.6);
+            box-shadow: 0 0 0 2px rgba(234, 135, 8, 0.3);
+        }
+        body.dark-mode .search-match {
+            background: rgba(234, 179, 8, 0.3);
+        }
+        body.dark-mode .search-match.current {
+            background: rgba(234, 135, 8, 0.5);
+            box-shadow: 0 0 0 2px rgba(234, 135, 8, 0.25);
+        }
+        @media (max-width: 768px) {
+            .search-bar {
+                padding: 6px 8px;
+                gap: 4px;
+            }
+            .search-bar input {
+                padding: 6px 10px;
+                font-size: 0.8125rem;
+            }
+        }
+
     </style>
     <link rel="stylesheet" href="{{ root_path }}/static/theme.css">
     <link rel="stylesheet" href="{{ root_path }}/static/app.css">
@@ -938,6 +1046,21 @@
     <!-- MAIN CONTENT -->
     <main id="main">
         <div class="content-container">
+            <!-- Search Bar -->
+            <div class="search-bar" id="searchBar">
+                <input type="text" id="searchInput" placeholder="Search in chapter..." autocomplete="off" spellcheck="false">
+                <span class="search-info" id="searchInfo"></span>
+                <button class="search-nav-btn" id="searchPrevBtn" onclick="searchNav(-1)" disabled title="Previous match (Shift+Enter)">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708l6-6z"/></svg>
+                </button>
+                <button class="search-nav-btn" id="searchNextBtn" onclick="searchNav(1)" disabled title="Next match (Enter)">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>
+                </button>
+                <button class="search-close-btn" onclick="closeSearch()" title="Close (Esc)">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg>
+                </button>
+            </div>
+
             <!-- Top Action Buttons -->
             <div class="top-actions">
                 <button class="top-btn" id="ttsBtn" onclick="toggleTts()" title="Read aloud">
@@ -958,6 +1081,11 @@
                         <path d="M2 2v13.5a.5.5 0 0 0 .74.439L8 13.069l5.26 2.87A.5.5 0 0 0 14 15.5V2a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/>
                     </svg>
                 </a>
+                <button class="top-btn" id="searchBtn" onclick="toggleSearch()" title="Search in chapter (Ctrl+F)">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                    </svg>
+                </button>
                 <button class="top-btn" id="themeToggle" onclick="toggleDarkMode()" title="Toggle dark mode">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="themeIcon">
                         <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"></path>
@@ -2802,6 +2930,162 @@
                 clearInterval(waitForRestore);
                 saveProgress();
             }, 2000);
+        });
+
+        // ===== CHAPTER SEARCH =====
+        let searchMatches = [];
+        let searchCurrentIndex = -1;
+        let searchDebounceTimer = null;
+
+        function toggleSearch() {
+            const bar = document.getElementById('searchBar');
+            if (bar.classList.contains('show')) {
+                closeSearch();
+            } else {
+                openSearch();
+            }
+        }
+
+        function openSearch() {
+            const bar = document.getElementById('searchBar');
+            bar.classList.add('show');
+            const input = document.getElementById('searchInput');
+            input.value = '';
+            input.focus();
+            document.getElementById('searchInfo').textContent = '';
+            document.getElementById('searchPrevBtn').disabled = true;
+            document.getElementById('searchNextBtn').disabled = true;
+        }
+
+        function closeSearch() {
+            document.getElementById('searchBar').classList.remove('show');
+            clearSearchHighlights();
+            searchMatches = [];
+            searchCurrentIndex = -1;
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchInfo').textContent = '';
+        }
+
+        function clearSearchHighlights() {
+            const content = document.getElementById('chapterContent');
+            const marks = content.querySelectorAll('.search-match');
+            marks.forEach(mark => {
+                const parent = mark.parentNode;
+                while (mark.firstChild) {
+                    parent.insertBefore(mark.firstChild, mark);
+                }
+                parent.removeChild(mark);
+                parent.normalize();
+            });
+        }
+
+        function performSearch(query) {
+            clearSearchHighlights();
+            searchMatches = [];
+            searchCurrentIndex = -1;
+
+            if (!query || query.length < 2) {
+                document.getElementById('searchInfo').textContent = '';
+                document.getElementById('searchPrevBtn').disabled = true;
+                document.getElementById('searchNextBtn').disabled = true;
+                return;
+            }
+
+            const content = document.getElementById('chapterContent');
+            const treeWalker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT, {
+                acceptNode(node) {
+                    const parent = node.parentElement;
+                    if (parent && (parent.closest('.inline-note') || parent.closest('.search-bar') || parent.closest('.highlight-popup') || parent.closest('.note-editor') || parent.tagName === 'SCRIPT' || parent.tagName === 'STYLE')) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+
+            const queryLower = query.toLowerCase();
+            const textNodes = [];
+            while (treeWalker.nextNode()) {
+                textNodes.push(treeWalker.currentNode);
+            }
+
+            for (const node of textNodes) {
+                const text = node.textContent;
+                const textLower = text.toLowerCase();
+                let idx = 0;
+                const ranges = [];
+
+                while ((idx = textLower.indexOf(queryLower, idx)) !== -1) {
+                    const range = document.createRange();
+                    range.setStart(node, idx);
+                    range.setEnd(node, idx + query.length);
+                    ranges.push(range);
+                    idx += query.length;
+                }
+
+                for (let i = ranges.length - 1; i >= 0; i--) {
+                    const span = document.createElement('span');
+                    span.className = 'search-match';
+                    ranges[i].surroundContents(span);
+                    searchMatches.unshift(span);
+                }
+            }
+
+            const hasMatches = searchMatches.length > 0;
+            document.getElementById('searchPrevBtn').disabled = !hasMatches;
+            document.getElementById('searchNextBtn').disabled = !hasMatches;
+
+            if (hasMatches) {
+                searchCurrentIndex = 0;
+                searchMatches[0].classList.add('current');
+                searchMatches[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                document.getElementById('searchInfo').textContent = `1 of ${searchMatches.length}`;
+            } else {
+                document.getElementById('searchInfo').textContent = 'No matches';
+            }
+        }
+
+        function searchNav(direction) {
+            if (searchMatches.length === 0) return;
+
+            if (searchCurrentIndex >= 0) {
+                searchMatches[searchCurrentIndex].classList.remove('current');
+            }
+
+            searchCurrentIndex += direction;
+            if (searchCurrentIndex >= searchMatches.length) searchCurrentIndex = 0;
+            if (searchCurrentIndex < 0) searchCurrentIndex = searchMatches.length - 1;
+
+            searchMatches[searchCurrentIndex].classList.add('current');
+            searchMatches[searchCurrentIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.getElementById('searchInfo').textContent = `${searchCurrentIndex + 1} of ${searchMatches.length}`;
+        }
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                performSearch(e.target.value.trim());
+            }, 250);
+        });
+
+        document.getElementById('searchInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                closeSearch();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    searchNav(-1);
+                } else {
+                    searchNav(1);
+                }
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                openSearch();
+            }
         });
     </script>
 
