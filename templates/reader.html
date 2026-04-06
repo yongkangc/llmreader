@@ -862,22 +862,27 @@
             font-family: 'SF Mono', Menlo, Consolas, monospace;
         }
 
-        /* Search Bar */
-        .search-bar {
+        /* Search Bar - slide down animation */
+        .search-container {
             position: sticky;
             top: 0;
             z-index: 16;
-            display: none;
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.25s ease;
+            font-family: var(--font-sans, -apple-system, sans-serif);
+        }
+        .search-container.show {
+            max-height: 400px;
+        }
+        .search-bar {
+            display: flex;
             align-items: center;
             gap: 8px;
             padding: 8px 12px;
             background: var(--bg-elevated, var(--bg-main));
             border-bottom: 1px solid var(--border-medium);
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            font-family: var(--font-sans, -apple-system, sans-serif);
-        }
-        .search-bar.show {
-            display: flex;
         }
         .search-bar input {
             flex: 1;
@@ -899,38 +904,16 @@
             font-size: 0.8rem;
             color: var(--text-secondary);
             white-space: nowrap;
-            min-width: 60px;
+            min-width: 50px;
             text-align: center;
         }
-        .search-bar .search-nav-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            background: var(--bg-button);
-            color: var(--text-secondary);
-            border: 1px solid transparent;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.15s;
-            padding: 0;
-        }
-        .search-bar .search-nav-btn:hover:not(:disabled) {
-            background: var(--bg-button-hover);
-            color: var(--text-primary);
-            border-color: var(--border-light);
-        }
-        .search-bar .search-nav-btn:disabled {
-            opacity: 0.3;
-            cursor: default;
-        }
+        .search-bar .search-nav-btn,
         .search-bar .search-close-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
             background: transparent;
             color: var(--text-secondary);
             border: none;
@@ -938,36 +921,90 @@
             cursor: pointer;
             transition: all 0.15s;
             padding: 0;
+            flex-shrink: 0;
         }
+        .search-bar .search-nav-btn:hover:not(:disabled),
         .search-bar .search-close-btn:hover {
             background: var(--bg-button-hover);
             color: var(--text-primary);
         }
-        /* Search match highlights */
+        .search-bar .search-nav-btn:disabled {
+            opacity: 0.25;
+            cursor: default;
+        }
+        /* Search results panel */
+        .search-results-panel {
+            max-height: 320px;
+            overflow-y: auto;
+            background: var(--bg-main);
+            border-bottom: 1px solid var(--border-medium);
+            display: none;
+        }
+        .search-results-panel.show {
+            display: block;
+        }
+        .search-results-panel:empty {
+            display: none;
+        }
+        .search-results-chapter {
+            padding: 0;
+        }
+        .search-results-chapter-title {
+            position: sticky;
+            top: 0;
+            padding: 6px 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            background: var(--bg-surface, #f8f9fa);
+            border-bottom: 1px solid var(--border-light, #eee);
+        }
+        body.dark-mode .search-results-chapter-title {
+            background: var(--bg-elevated, #1e1e1e);
+        }
+        .search-result-item {
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-light, #f0f0f0);
+            transition: background 0.1s;
+        }
+        .search-result-item:hover {
+            background: var(--bg-button-hover);
+        }
+        .search-result-item.active {
+            background: rgba(37, 99, 235, 0.06);
+            border-left: 3px solid var(--accent-primary);
+        }
+        .search-result-item mark {
+            background: rgba(234, 179, 8, 0.4);
+            color: inherit;
+            border-radius: 2px;
+            padding: 0 1px;
+        }
+        /* CSS Highlight API for zero-cost in-chapter highlighting */
+        ::highlight(search-results) {
+            background-color: rgba(234, 179, 8, 0.35);
+        }
+        ::highlight(search-current) {
+            background-color: rgba(234, 135, 8, 0.6);
+        }
+        /* DOM fallback highlights (older browsers) */
         .search-match {
             background: rgba(234, 179, 8, 0.35);
             border-radius: 2px;
         }
         .search-match.current {
             background: rgba(234, 135, 8, 0.6);
-            box-shadow: 0 0 0 2px rgba(234, 135, 8, 0.3);
-        }
-        body.dark-mode .search-match {
-            background: rgba(234, 179, 8, 0.3);
-        }
-        body.dark-mode .search-match.current {
-            background: rgba(234, 135, 8, 0.5);
-            box-shadow: 0 0 0 2px rgba(234, 135, 8, 0.25);
         }
         @media (max-width: 768px) {
-            .search-bar {
-                padding: 6px 8px;
-                gap: 4px;
-            }
-            .search-bar input {
-                padding: 6px 10px;
-                font-size: 0.8125rem;
-            }
+            .search-bar { padding: 6px 8px; gap: 4px; }
+            .search-bar input { padding: 6px 10px; font-size: 0.8125rem; }
+            .search-results-panel { max-height: 240px; }
         }
 
     </style>
@@ -1046,19 +1083,22 @@
     <!-- MAIN CONTENT -->
     <main id="main">
         <div class="content-container">
-            <!-- Search Bar -->
-            <div class="search-bar" id="searchBar">
-                <input type="text" id="searchInput" placeholder="Search in chapter..." autocomplete="off" spellcheck="false">
-                <span class="search-info" id="searchInfo"></span>
-                <button class="search-nav-btn" id="searchPrevBtn" onclick="searchNav(-1)" disabled title="Previous match (Shift+Enter)">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708l6-6z"/></svg>
-                </button>
-                <button class="search-nav-btn" id="searchNextBtn" onclick="searchNav(1)" disabled title="Next match (Enter)">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>
-                </button>
-                <button class="search-close-btn" onclick="closeSearch()" title="Close (Esc)">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg>
-                </button>
+            <!-- Search -->
+            <div class="search-container" id="searchContainer">
+                <div class="search-bar" id="searchBar">
+                    <input type="text" id="searchInput" placeholder="Search in book..." autocomplete="off" spellcheck="false">
+                    <span class="search-info" id="searchInfo"></span>
+                    <button class="search-nav-btn" id="searchPrevBtn" onclick="searchNav(-1)" disabled title="Previous (Shift+Enter)">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708l6-6z"/></svg>
+                    </button>
+                    <button class="search-nav-btn" id="searchNextBtn" onclick="searchNav(1)" disabled title="Next (Enter)">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>
+                    </button>
+                    <button class="search-close-btn" onclick="closeSearch()" title="Close (Esc)">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/></svg>
+                    </button>
+                </div>
+                <div class="search-results-panel" id="searchResultsPanel"></div>
             </div>
 
             <!-- Top Action Buttons -->
@@ -2932,152 +2972,294 @@
             }, 2000);
         });
 
-        // ===== CHAPTER SEARCH =====
-        let searchMatches = [];
+        // ===== CHAPTER SEARCH (CSS Highlight API + cross-chapter) =====
+        const useHighlightAPI = typeof CSS !== 'undefined' && CSS.highlights;
+        let searchRanges = [];       // Range objects for current chapter
         let searchCurrentIndex = -1;
         let searchDebounceTimer = null;
+        let searchAbortController = null;
+        let crossChapterResults = null; // server results cache
+        let flatResults = [];        // flattened list: [{chapterIndex, snippetIndex, ...}]
 
         function toggleSearch() {
-            const bar = document.getElementById('searchBar');
-            if (bar.classList.contains('show')) {
-                closeSearch();
-            } else {
-                openSearch();
-            }
+            const c = document.getElementById('searchContainer');
+            c.classList.contains('show') ? closeSearch() : openSearch();
         }
 
         function openSearch() {
-            const bar = document.getElementById('searchBar');
-            bar.classList.add('show');
+            const c = document.getElementById('searchContainer');
+            c.classList.add('show');
             const input = document.getElementById('searchInput');
             input.value = '';
             input.focus();
-            document.getElementById('searchInfo').textContent = '';
-            document.getElementById('searchPrevBtn').disabled = true;
-            document.getElementById('searchNextBtn').disabled = true;
+            updateSearchUI();
         }
 
         function closeSearch() {
-            document.getElementById('searchBar').classList.remove('show');
-            clearSearchHighlights();
-            searchMatches = [];
+            document.getElementById('searchContainer').classList.remove('show');
+            document.getElementById('searchResultsPanel').classList.remove('show');
+            document.getElementById('searchResultsPanel').innerHTML = '';
+            clearInChapterHighlights();
+            searchRanges = [];
             searchCurrentIndex = -1;
+            crossChapterResults = null;
+            flatResults = [];
             document.getElementById('searchInput').value = '';
-            document.getElementById('searchInfo').textContent = '';
+            updateSearchUI();
         }
 
-        function clearSearchHighlights() {
-            const content = document.getElementById('chapterContent');
-            const marks = content.querySelectorAll('.search-match');
-            marks.forEach(mark => {
-                const parent = mark.parentNode;
-                while (mark.firstChild) {
-                    parent.insertBefore(mark.firstChild, mark);
-                }
-                parent.removeChild(mark);
-                parent.normalize();
-            });
-        }
-
-        function performSearch(query) {
-            clearSearchHighlights();
-            searchMatches = [];
-            searchCurrentIndex = -1;
-
-            if (!query || query.length < 2) {
+        function updateSearchUI() {
+            const total = flatResults.length;
+            const hasMatches = total > 0;
+            document.getElementById('searchPrevBtn').disabled = !hasMatches;
+            document.getElementById('searchNextBtn').disabled = !hasMatches;
+            if (total > 0 && searchCurrentIndex >= 0) {
+                document.getElementById('searchInfo').textContent = `${searchCurrentIndex + 1}/${total}`;
+            } else if (total === 0 && document.getElementById('searchInput').value.trim().length >= 2) {
+                document.getElementById('searchInfo').textContent = 'No results';
+            } else {
                 document.getElementById('searchInfo').textContent = '';
-                document.getElementById('searchPrevBtn').disabled = true;
-                document.getElementById('searchNextBtn').disabled = true;
-                return;
             }
+        }
+
+        // ---- In-chapter highlighting (CSS Highlight API with DOM fallback) ----
+        function highlightInChapter(query) {
+            clearInChapterHighlights();
+            searchRanges = [];
+            if (!query || query.length < 2) return;
 
             const content = document.getElementById('chapterContent');
             const treeWalker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT, {
                 acceptNode(node) {
-                    const parent = node.parentElement;
-                    if (parent && (parent.closest('.inline-note') || parent.closest('.search-bar') || parent.closest('.highlight-popup') || parent.closest('.note-editor') || parent.tagName === 'SCRIPT' || parent.tagName === 'STYLE')) {
+                    const p = node.parentElement;
+                    if (p && (p.closest('.inline-note') || p.closest('.search-container') || p.closest('.highlight-popup') || p.closest('.note-editor') || p.tagName === 'SCRIPT' || p.tagName === 'STYLE')) {
                         return NodeFilter.FILTER_REJECT;
                     }
                     return NodeFilter.FILTER_ACCEPT;
                 }
             });
 
-            const queryLower = query.toLowerCase();
-            const textNodes = [];
-            while (treeWalker.nextNode()) {
-                textNodes.push(treeWalker.currentNode);
-            }
+            const qLower = query.toLowerCase();
+            const nodes = [];
+            while (treeWalker.nextNode()) nodes.push(treeWalker.currentNode);
 
-            for (const node of textNodes) {
-                const text = node.textContent;
-                const textLower = text.toLowerCase();
+            for (const node of nodes) {
+                const textLower = node.textContent.toLowerCase();
                 let idx = 0;
-                const ranges = [];
-
-                while ((idx = textLower.indexOf(queryLower, idx)) !== -1) {
+                while ((idx = textLower.indexOf(qLower, idx)) !== -1) {
                     const range = document.createRange();
                     range.setStart(node, idx);
                     range.setEnd(node, idx + query.length);
-                    ranges.push(range);
+                    searchRanges.push(range);
                     idx += query.length;
-                }
-
-                for (let i = ranges.length - 1; i >= 0; i--) {
-                    const span = document.createElement('span');
-                    span.className = 'search-match';
-                    ranges[i].surroundContents(span);
-                    searchMatches.unshift(span);
                 }
             }
 
-            const hasMatches = searchMatches.length > 0;
-            document.getElementById('searchPrevBtn').disabled = !hasMatches;
-            document.getElementById('searchNextBtn').disabled = !hasMatches;
-
-            if (hasMatches) {
-                searchCurrentIndex = 0;
-                searchMatches[0].classList.add('current');
-                searchMatches[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                document.getElementById('searchInfo').textContent = `1 of ${searchMatches.length}`;
+            if (useHighlightAPI) {
+                CSS.highlights.set('search-results', new Highlight(...searchRanges));
             } else {
-                document.getElementById('searchInfo').textContent = 'No matches';
+                // DOM fallback — wrap in spans (reverse order to preserve offsets)
+                for (let i = searchRanges.length - 1; i >= 0; i--) {
+                    try {
+                        const span = document.createElement('span');
+                        span.className = 'search-match';
+                        searchRanges[i].surroundContents(span);
+                    } catch(e) { /* skip cross-element ranges */ }
+                }
+            }
+        }
+
+        function clearInChapterHighlights() {
+            if (useHighlightAPI) {
+                CSS.highlights.delete('search-results');
+                CSS.highlights.delete('search-current');
+            } else {
+                document.querySelectorAll('#chapterContent .search-match').forEach(el => {
+                    const parent = el.parentNode;
+                    while (el.firstChild) parent.insertBefore(el.firstChild, el);
+                    parent.removeChild(el);
+                    parent.normalize();
+                });
+            }
+        }
+
+        function scrollToCurrentMatch() {
+            if (searchRanges.length === 0) return;
+            // Find the local range index for the current flat result
+            const current = flatResults[searchCurrentIndex];
+            if (!current || current.chapterIndex !== chapterIndex) return;
+
+            const localIdx = current.localIndex;
+            if (localIdx < 0 || localIdx >= searchRanges.length) return;
+
+            if (useHighlightAPI) {
+                CSS.highlights.set('search-current', new Highlight(searchRanges[localIdx]));
+                // Scroll to range
+                const rect = searchRanges[localIdx].getBoundingClientRect();
+                const main = document.getElementById('main');
+                const targetY = main.scrollTop + rect.top - main.clientHeight / 3;
+                main.scrollTo({ top: targetY, behavior: 'smooth' });
+            } else {
+                // DOM fallback
+                document.querySelectorAll('#chapterContent .search-match.current').forEach(el => el.classList.remove('current'));
+                const spans = document.querySelectorAll('#chapterContent .search-match');
+                if (spans[localIdx]) {
+                    spans[localIdx].classList.add('current');
+                    spans[localIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+
+        // ---- Cross-chapter search via server ----
+        async function performSearch(query) {
+            clearInChapterHighlights();
+            searchRanges = [];
+            searchCurrentIndex = -1;
+            crossChapterResults = null;
+            flatResults = [];
+            document.getElementById('searchResultsPanel').innerHTML = '';
+            document.getElementById('searchResultsPanel').classList.remove('show');
+
+            if (!query || query.length < 2) {
+                updateSearchUI();
+                return;
+            }
+
+            // Abort previous request
+            if (searchAbortController) searchAbortController.abort();
+            searchAbortController = new AbortController();
+
+            try {
+                const resp = await fetch(`{{ root_path }}/api/books/${bookId}/search?q=${encodeURIComponent(query)}`, {
+                    signal: searchAbortController.signal
+                });
+                const data = await resp.json();
+                crossChapterResults = data;
+
+                // Build flat results list
+                flatResults = [];
+                let localCountForCurrentChapter = 0;
+                for (const chapter of data.results) {
+                    for (let si = 0; si < chapter.matches.length; si++) {
+                        const isCurrentChapter = chapter.chapter_index === chapterIndex;
+                        flatResults.push({
+                            chapterIndex: chapter.chapter_index,
+                            chapterTitle: chapter.chapter_title,
+                            snippet: chapter.matches[si].snippet,
+                            matchStart: chapter.matches[si].match_start,
+                            matchLen: chapter.matches[si].match_len,
+                            localIndex: isCurrentChapter ? localCountForCurrentChapter : -1,
+                        });
+                        if (isCurrentChapter) localCountForCurrentChapter++;
+                    }
+                }
+
+                // Highlight current chapter
+                highlightInChapter(query);
+
+                // Build results panel
+                renderResultsPanel(data, query);
+
+                // Auto-select first result in current chapter, or first overall
+                if (flatResults.length > 0) {
+                    const firstLocal = flatResults.findIndex(r => r.chapterIndex === chapterIndex);
+                    searchCurrentIndex = firstLocal >= 0 ? firstLocal : 0;
+                    updateSearchUI();
+                    highlightActiveResult();
+                    if (flatResults[searchCurrentIndex].chapterIndex === chapterIndex) {
+                        scrollToCurrentMatch();
+                    }
+                } else {
+                    updateSearchUI();
+                }
+            } catch(e) {
+                if (e.name !== 'AbortError') console.error('Search failed:', e);
+            }
+        }
+
+        function renderResultsPanel(data, query) {
+            const panel = document.getElementById('searchResultsPanel');
+            if (!data.results.length) { panel.innerHTML = ''; return; }
+
+            let html = '';
+            let globalIdx = 0;
+            for (const chapter of data.results) {
+                const isCurrent = chapter.chapter_index === chapterIndex;
+                const label = isCurrent ? `${chapter.chapter_title} (this chapter)` : chapter.chapter_title;
+                html += `<div class="search-results-chapter"><div class="search-results-chapter-title">${escapeHtml(label)} · ${chapter.count}</div>`;
+                for (const match of chapter.matches) {
+                    // Insert <mark> around the matched text in snippet
+                    const s = match.snippet;
+                    const before = escapeHtml(s.substring(0, match.match_start));
+                    const matched = escapeHtml(s.substring(match.match_start, match.match_start + match.match_len));
+                    const after = escapeHtml(s.substring(match.match_start + match.match_len));
+                    const activeClass = globalIdx === searchCurrentIndex ? ' active' : '';
+                    html += `<div class="search-result-item${activeClass}" data-idx="${globalIdx}" onclick="jumpToResult(${globalIdx})">${before}<mark>${matched}</mark>${after}</div>`;
+                    globalIdx++;
+                }
+                html += '</div>';
+            }
+            panel.innerHTML = html;
+            panel.classList.add('show');
+        }
+
+        function highlightActiveResult() {
+            document.querySelectorAll('.search-result-item.active').forEach(el => el.classList.remove('active'));
+            const item = document.querySelector(`.search-result-item[data-idx="${searchCurrentIndex}"]`);
+            if (item) {
+                item.classList.add('active');
+                item.scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function jumpToResult(idx) {
+            searchCurrentIndex = idx;
+            const result = flatResults[idx];
+            if (!result) return;
+
+            if (result.chapterIndex !== chapterIndex) {
+                // Navigate to other chapter with search query preserved
+                const query = document.getElementById('searchInput').value.trim();
+                window.location.href = `{{ root_path }}/read/{{ book_id }}/${result.chapterIndex}?search=${encodeURIComponent(query)}&si=${idx}`;
+            } else {
+                updateSearchUI();
+                highlightActiveResult();
+                scrollToCurrentMatch();
             }
         }
 
         function searchNav(direction) {
-            if (searchMatches.length === 0) return;
-
-            if (searchCurrentIndex >= 0) {
-                searchMatches[searchCurrentIndex].classList.remove('current');
-            }
-
+            if (flatResults.length === 0) return;
             searchCurrentIndex += direction;
-            if (searchCurrentIndex >= searchMatches.length) searchCurrentIndex = 0;
-            if (searchCurrentIndex < 0) searchCurrentIndex = searchMatches.length - 1;
+            if (searchCurrentIndex >= flatResults.length) searchCurrentIndex = 0;
+            if (searchCurrentIndex < 0) searchCurrentIndex = flatResults.length - 1;
 
-            searchMatches[searchCurrentIndex].classList.add('current');
-            searchMatches[searchCurrentIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
-            document.getElementById('searchInfo').textContent = `${searchCurrentIndex + 1} of ${searchMatches.length}`;
+            const result = flatResults[searchCurrentIndex];
+            if (result.chapterIndex !== chapterIndex) {
+                // Cross-chapter navigation
+                const query = document.getElementById('searchInput').value.trim();
+                window.location.href = `{{ root_path }}/read/{{ book_id }}/${result.chapterIndex}?search=${encodeURIComponent(query)}&si=${searchCurrentIndex}`;
+            } else {
+                updateSearchUI();
+                highlightActiveResult();
+                scrollToCurrentMatch();
+            }
         }
 
+        // Input handler with debounce
         document.getElementById('searchInput').addEventListener('input', (e) => {
             if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
             searchDebounceTimer = setTimeout(() => {
                 performSearch(e.target.value.trim());
-            }, 250);
+            }, 300);
         });
 
+        // Keyboard shortcuts
         document.getElementById('searchInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
+            if (e.key === 'Escape') { e.preventDefault(); closeSearch(); }
+            else if (e.key === 'Enter') {
                 e.preventDefault();
-                closeSearch();
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                if (e.shiftKey) {
-                    searchNav(-1);
-                } else {
-                    searchNav(1);
-                }
+                e.shiftKey ? searchNav(-1) : searchNav(1);
             }
         });
 
@@ -3087,6 +3269,26 @@
                 openSearch();
             }
         });
+
+        // Restore search state when navigating between chapters
+        (function restoreSearch() {
+            const params = new URLSearchParams(window.location.search);
+            const query = params.get('search');
+            if (query) {
+                document.getElementById('searchContainer').classList.add('show');
+                document.getElementById('searchInput').value = query;
+                // Small delay to let chapter content render
+                setTimeout(() => performSearch(query).then(() => {
+                    const si = parseInt(params.get('si'));
+                    if (!isNaN(si) && si < flatResults.length) {
+                        searchCurrentIndex = si;
+                        updateSearchUI();
+                        highlightActiveResult();
+                        scrollToCurrentMatch();
+                    }
+                }), 200);
+            }
+        })();
     </script>
 
     <!-- TTS Scripts -->

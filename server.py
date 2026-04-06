@@ -985,6 +985,57 @@ async def get_offline_package(book_id: str):
     }
 
 
+@app.get("/api/books/{book_id}/search")
+async def search_book(book_id: str, q: str = ""):
+    """Search across all chapters of a book. Returns matches with context."""
+    if len(q) < 2:
+        return {"results": [], "total": 0}
+
+    book = load_book_cached(book_id)
+    if not book:
+        return {"results": [], "total": 0}
+
+    query_lower = q.lower()
+    results = []
+    total = 0
+    context_radius = 60
+
+    for idx, chapter in enumerate(book.spine):
+        text = chapter.text or ""
+        text_lower = text.lower()
+        chapter_matches = []
+        search_start = 0
+
+        while True:
+            pos = text_lower.find(query_lower, search_start)
+            if pos == -1:
+                break
+            # Extract context snippet
+            start = max(0, pos - context_radius)
+            end = min(len(text), pos + len(q) + context_radius)
+            snippet = text[start:end]
+            # Add ellipsis
+            prefix = "..." if start > 0 else ""
+            suffix = "..." if end < len(text) else ""
+            chapter_matches.append({
+                "snippet": prefix + snippet + suffix,
+                "match_start": pos - start + len(prefix),
+                "match_len": len(q),
+            })
+            search_start = pos + len(q)
+
+        if chapter_matches:
+            total += len(chapter_matches)
+            results.append({
+                "chapter_index": idx,
+                "chapter_title": chapter.title or f"Section {idx + 1}",
+                "matches": chapter_matches,
+                "count": len(chapter_matches),
+            })
+
+    return {"results": results, "total": total, "query": q}
+
+
 @app.get("/api/highlights")
 async def get_all_highlights():
     """
