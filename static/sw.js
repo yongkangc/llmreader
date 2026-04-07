@@ -3,7 +3,7 @@
  * Handles: offline navigation, cached chapters, images from IndexedDB
  */
 
-const CACHE_NAME = 'llmreader-v1';
+const CACHE_NAME = 'llmreader-v2';
 const STATIC_ASSETS = [
     '/reader/static/offline-db.js',
     '/reader/static/theme.css',
