@@ -3302,6 +3302,10 @@
                 e.preventDefault();
                 openSearch();
             }
+            if (e.key === 'Escape' && document.getElementById('searchContainer').classList.contains('show')) {
+                e.preventDefault();
+                closeSearch();
+            }
         });
 
         // Restore search state when navigating between chapters
