@@ -2897,11 +2897,13 @@
             // and we don't want to interfere with the highlight creation flow
 
             // Close/collapse sidebar when clicking on main content area
+            // But NOT when clicking toolbar buttons (top-actions, search, font settings)
             const isMobile = window.innerWidth <= 768;
             const clickedOnMain = e.target.closest('#main');
             const clickedOutsideSidebar = !e.target.closest('#sidebar') && !e.target.closest('.sidebar-toggle');
+            const clickedToolbar = e.target.closest('.top-actions') || e.target.closest('.search-container') || e.target.closest('.font-settings-container');
 
-            if (clickedOutsideSidebar && clickedOnMain) {
+            if (clickedOutsideSidebar && clickedOnMain && !clickedToolbar) {
                 if (isMobile && document.body.classList.contains('sidebar-open')) {
                     // On mobile, close the sidebar overlay
                     document.body.classList.remove('sidebar-open');
