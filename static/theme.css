@@ -11,8 +11,6 @@
 :root {
     /* Backgrounds */
     --bg-main: #fafafa;
-    --bg-page: #fbfaf7;
-    --bg-reader-paper: #fffdf8;
     --bg-card: #ffffff;
     --bg-card-hover: #f8f9fa;
     --bg-button: #f4f4f5;
@@ -88,8 +86,6 @@
 body.dark-mode {
     /* Backgrounds */
     --bg-main: #0a0a0a;
-    --bg-page: #0d0d0d;
-    --bg-reader-paper: #151515;
     --bg-card: #1a1a1a;
     --bg-card-hover: #242424;
     --bg-button: #262626;

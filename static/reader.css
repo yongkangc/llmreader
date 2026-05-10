@@ -1,8 +1,6 @@
 /* Theme Variables */
 :root {
     --bg-main: #ffffff;
-    --bg-page: #fbfaf7;
-    --bg-reader-paper: #fffdf8;
     --bg-sidebar: #f8f9fa;
     --bg-button: #f8f9fa;
     --bg-button-hover: #e9ecef;
@@ -25,8 +23,6 @@
 
 body.dark-mode {
     --bg-main: #1a1a1a;
-    --bg-page: #0d0d0d;
-    --bg-reader-paper: #151515;
     --bg-sidebar: #2d2d2d;
     --bg-button: #3d3d3d;
     --bg-button-hover: #4a4a4a;
@@ -43,7 +39,7 @@ body.dark-mode {
 }
 
 /* Layout */
-body { margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; font-family: "Georgia", serif; background: var(--bg-page); transition: background-color 0.3s, color 0.3s; }
+body { margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; font-family: "Georgia", serif; background: var(--bg-main); transition: background-color 0.3s, color 0.3s; }
 
 /* Sidebar */
 #sidebar { width: 300px; background: var(--bg-sidebar); border-right: 1px solid var(--border-light); overflow-y: auto; padding: 20px; flex-shrink: 0; transition: transform 0.3s ease, width 0.3s ease, padding 0.3s ease, background-color 0.3s, border-color 0.3s; position: relative; z-index: 10; }
@@ -62,8 +58,8 @@ a.toc-link:hover { color: var(--text-primary); text-decoration: underline; }
 a.toc-link.active { color: var(--accent-active); font-weight: bold; }
 
 /* Main Content */
-#main { flex-grow: 1; overflow-y: auto; position: relative; scroll-behavior: smooth; overscroll-behavior-y: contain; scroll-padding-top: 80px; background: var(--bg-page); transition: background-color 0.3s; -webkit-overflow-scrolling: touch; }
-.content-container { width: 100%; max-width: var(--reader-shell-width); margin: 0 auto; padding: var(--reader-top-padding) var(--reader-side-padding) var(--reader-bottom-padding); line-height: 1.72; font-size: 18px; color: var(--text-primary); position: relative; transition: max-width 0.3s ease, color 0.3s, background-color 0.3s; background: var(--bg-reader-paper); min-height: 100vh; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+#main { flex-grow: 1; overflow-y: auto; position: relative; scroll-behavior: smooth; overscroll-behavior-y: contain; scroll-padding-top: 80px; background: var(--bg-main); transition: background-color 0.3s; -webkit-overflow-scrolling: touch; }
+.content-container { width: 100%; max-width: var(--reader-shell-width); margin: 0 auto; padding: var(--reader-top-padding) var(--reader-side-padding) var(--reader-bottom-padding); line-height: 1.72; font-size: 18px; color: var(--text-primary); position: relative; transition: max-width 0.3s ease, color 0.3s, background-color 0.3s; background: var(--bg-main); min-height: 100vh; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
 /* Expand content when sidebar is collapsed */
 body.sidebar-collapsed .content-container { max-width: 1040px; }
