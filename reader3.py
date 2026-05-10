@@ -4,10 +4,11 @@ Parses an EPUB file into a structured object that can be used to serve the book 
 
 import os
 import pickle
+import re
 import shutil
 from dataclasses import dataclass, field
 from html import escape
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Iterable
 from datetime import datetime
 from urllib.parse import unquote
 
@@ -68,6 +69,22 @@ class Book:
     source_file: str
     processed_at: str
     version: str = "3.1"
+
+
+@dataclass
+class PdfPageText:
+    """Extracted text for one PDF page."""
+    page_number: int
+    text: str
+
+
+@dataclass
+class PdfSection:
+    """A logical reading section derived from PDF outline or headings."""
+    title: str
+    text: str
+    start_page: int
+    end_page: int
 
 
 # --- Utilities ---
@@ -170,6 +187,243 @@ def extract_metadata_robust(book_obj) -> BookMetadata:
         date=get_one('date'),
         identifiers=get_list('identifier'),
         subjects=get_list('subject')
+    )
+
+
+_CHAPTER_HEADING_RE = re.compile(
+    r"(?m)^CHAPTER\s+([0-9]+|[IVXLCDM]+)\s*\n([^\n]{3,140})"
+)
+
+
+def _clean_pdf_title(title: str) -> str:
+    """Normalize PDF outline or heading titles for reader navigation."""
+    title = " ".join(str(title or "").split())
+    title = re.sub(r"\s+\d{1,4}$", "", title).strip()
+    return title or "Untitled Section"
+
+
+def _html_from_pdf_text(title: str, text: str, start_page: int, end_page: int) -> str:
+    """Convert extracted PDF text into readable HTML."""
+    blocks: List[str] = []
+    if start_page >= 0 and end_page >= start_page:
+        blocks.append(f'<header class="pdf-section-meta">Pages {start_page + 1}-{end_page + 1}</header>')
+    blocks.append(f"<h1>{escape(title)}</h1>")
+
+    paragraph_lines: List[str] = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            if paragraph_lines:
+                blocks.append(f"<p>{escape(' '.join(paragraph_lines))}</p>")
+                paragraph_lines = []
+            continue
+
+        # Keep obvious section headings scannable instead of burying them in prose.
+        is_heading = (
+            len(line) <= 90
+            and (
+                bool(re.match(r"^(\d+(\.\d+)*|Appendix|Preface|Foreword|Acknowledgments)\b", line, re.I))
+                or (line.isupper() and len(line.split()) <= 10)
+            )
+        )
+        if is_heading:
+            if paragraph_lines:
+                blocks.append(f"<p>{escape(' '.join(paragraph_lines))}</p>")
+                paragraph_lines = []
+            blocks.append(f"<h2>{escape(line)}</h2>")
+        else:
+            paragraph_lines.append(line)
+
+    if paragraph_lines:
+        blocks.append(f"<p>{escape(' '.join(paragraph_lines))}</p>")
+
+    return "\n".join(blocks)
+
+
+def _flatten_pdf_outline(reader: PdfReader, outline: Optional[Iterable[Any]] = None) -> List[tuple[str, int]]:
+    """Return (title, zero-based page number) entries from a PDF outline tree."""
+    outline = reader.outline if outline is None else outline
+    entries: List[tuple[str, int]] = []
+
+    for item in outline:
+        if isinstance(item, list):
+            entries.extend(_flatten_pdf_outline(reader, item))
+            continue
+
+        title = getattr(item, "title", None)
+        if not title:
+            continue
+
+        try:
+            page_number = reader.get_destination_page_number(item)
+        except Exception:
+            continue
+
+        if page_number is not None and page_number >= 0:
+            entries.append((_clean_pdf_title(title), page_number))
+
+    return entries
+
+
+def _sections_from_outline(reader: PdfReader, pages: List[PdfPageText]) -> List[PdfSection]:
+    """Build PDF sections from embedded bookmarks when the PDF provides them."""
+    if not pages:
+        return []
+
+    outline_entries = _flatten_pdf_outline(reader)
+    if len(outline_entries) < 2:
+        return []
+
+    # Keep the first title for each page and discard out-of-range destinations.
+    deduped: List[tuple[str, int]] = []
+    seen_pages = set()
+    for title, page_number in sorted(outline_entries, key=lambda item: item[1]):
+        if page_number >= len(pages) or page_number in seen_pages:
+            continue
+        deduped.append((title, page_number))
+        seen_pages.add(page_number)
+
+    if len(deduped) < 2:
+        return []
+
+    sections: List[PdfSection] = []
+    if deduped[0][1] > 0:
+        front_text = "\n\n".join(page.text for page in pages[:deduped[0][1]] if page.text)
+        if front_text.strip():
+            sections.append(PdfSection("Front Matter", front_text.strip(), 0, deduped[0][1] - 1))
+
+    for index, (title, start_page) in enumerate(deduped):
+        next_page = deduped[index + 1][1] if index + 1 < len(deduped) else len(pages)
+        section_pages = pages[start_page:next_page]
+        text = "\n\n".join(page.text for page in section_pages if page.text).strip()
+        if text:
+            sections.append(PdfSection(title, text, start_page, next_page - 1))
+
+    return sections
+
+
+def _chapter_title_from_heading(match: re.Match[str]) -> str:
+    chapter_number = match.group(1)
+    title = _clean_pdf_title(match.group(2))
+    return f"Chapter {chapter_number}: {title}"
+
+
+def _sections_from_chapter_headings(text: str) -> List[PdfSection]:
+    """Split extracted PDF text at real chapter headings, skipping TOC duplicates."""
+    matches = list(_CHAPTER_HEADING_RE.finditer(text))
+    if len(matches) < 2:
+        return []
+
+    # TOC entries often duplicate every CHAPTER heading near the front of a PDF.
+    # Keep later occurrences for each chapter number; those are normally the body.
+    by_number: Dict[str, List[re.Match[str]]] = {}
+    for match in matches:
+        by_number.setdefault(match.group(1), []).append(match)
+
+    body_matches = []
+    for chapter_number, chapter_matches in by_number.items():
+        if len(chapter_matches) >= 2:
+            body_matches.append(chapter_matches[-1])
+        else:
+            body_matches.append(chapter_matches[0])
+
+    body_matches.sort(key=lambda match: match.start())
+    if len(body_matches) < 2:
+        return []
+
+    sections: List[PdfSection] = []
+    front_text = text[:body_matches[0].start()].strip()
+    if front_text:
+        sections.append(PdfSection("Front Matter", front_text, -1, -1))
+
+    for index, match in enumerate(body_matches):
+        start = match.start()
+        end = body_matches[index + 1].start() if index + 1 < len(body_matches) else len(text)
+        section_text = text[start:end].strip()
+        if section_text:
+            sections.append(PdfSection(_chapter_title_from_heading(match), section_text, -1, -1))
+
+    return sections
+
+
+def _sections_from_pages(pages: List[PdfPageText], pages_per_section: int = 12) -> List[PdfSection]:
+    """Last-resort fallback so long PDFs are still navigable."""
+    sections: List[PdfSection] = []
+    for start in range(0, len(pages), pages_per_section):
+        chunk = pages[start:start + pages_per_section]
+        text = "\n\n".join(page.text for page in chunk if page.text).strip()
+        if not text:
+            continue
+        end_page = chunk[-1].page_number
+        title = f"Pages {chunk[0].page_number + 1}-{end_page + 1}"
+        sections.append(PdfSection(title, text, chunk[0].page_number, end_page))
+    return sections
+
+
+def build_pdf_sections(reader: PdfReader, pages: List[PdfPageText]) -> List[PdfSection]:
+    """Derive logical reading sections for a PDF."""
+    outline_sections = _sections_from_outline(reader, pages)
+    if outline_sections:
+        return outline_sections
+
+    full_text = "\n\n".join(page.text for page in pages if page.text).strip()
+    heading_sections = _sections_from_chapter_headings(full_text)
+    if heading_sections:
+        return heading_sections
+
+    page_sections = _sections_from_pages(pages)
+    if page_sections:
+        return page_sections
+
+    return [PdfSection("Document", "(No text extracted)", 0, 0)]
+
+
+def rebuild_flattened_pdf_book(book: Book) -> Optional[Book]:
+    """
+    Upgrade an older PDF import that was flattened into one chapter.
+    Returns a rebuilt book when confident section headings exist.
+    """
+    if not book.source_file.lower().endswith(".pdf") or len(book.spine) != 1:
+        return None
+
+    full_text = book.spine[0].text.strip()
+    sections = _sections_from_chapter_headings(full_text)
+    if len(sections) <= 1:
+        return None
+
+    rebuilt = book_from_pdf_sections(sections, book.metadata, book.source_file)
+    rebuilt.processed_at = book.processed_at
+    return rebuilt
+
+
+def book_from_pdf_sections(
+    sections: List[PdfSection],
+    metadata: BookMetadata,
+    source_file: str,
+) -> Book:
+    """Create the shared Book model from already-derived PDF sections."""
+    spine_chapters: List[ChapterContent] = []
+    toc: List[TOCEntry] = []
+
+    for index, section in enumerate(sections):
+        href = f"pdf-section-{index + 1:04d}.html"
+        spine_chapters.append(ChapterContent(
+            id=f"pdf_section_{index + 1}",
+            href=href,
+            title=section.title,
+            content=_html_from_pdf_text(section.title, section.text, section.start_page, section.end_page),
+            text=section.text,
+            order=index,
+        ))
+        toc.append(TOCEntry(title=section.title, href=href, file_href=href, anchor=""))
+
+    return Book(
+        metadata=metadata,
+        spine=spine_chapters,
+        toc=toc,
+        images={},
+        source_file=source_file,
+        processed_at=datetime.now().isoformat(),
     )
 
 
@@ -288,34 +542,22 @@ def process_epub(epub_path: str, output_dir: str) -> Book:
 
 def process_pdf(pdf_path: str, output_dir: str) -> Book:
     """
-    Convert a PDF into a minimal Book representation for the reader.
-    Extracts text per page, builds simple HTML paragraphs, and reuses
-    the same Book structure used for EPUBs.
+    Convert a PDF into the shared Book representation.
+    Prefer embedded PDF bookmarks, then chapter headings, then page chunks.
     """
     print(f"Loading {pdf_path}...")
     reader = PdfReader(pdf_path)
 
-    # Extract text per page; some PDFs may yield empty strings.
-    page_texts = []
-    for page in reader.pages:
+    pages: List[PdfPageText] = []
+    for page_number, page in enumerate(reader.pages):
         try:
-            content = page.extract_text() or ""
+            content = page.extract_text(extraction_mode="layout") or ""
         except Exception:
-            content = ""
-        cleaned = content.strip()
-        if cleaned:
-            page_texts.append(cleaned)
-
-    full_text = "\n\n".join(page_texts)
-
-    # Build simple paragraph-based HTML
-    paragraphs = []
-    for raw in full_text.splitlines():
-        line = raw.strip()
-        if not line:
-            continue
-        paragraphs.append(f"<p>{escape(line)}</p>")
-    html_content = "\n".join(paragraphs) if paragraphs else "<p>(No text extracted)</p>"
+            try:
+                content = page.extract_text() or ""
+            except Exception:
+                content = ""
+        pages.append(PdfPageText(page_number=page_number, text=content.strip()))
 
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
@@ -333,27 +575,8 @@ def process_pdf(pdf_path: str, output_dir: str) -> Book:
         subjects=[],
     )
 
-    chapter = ChapterContent(
-        id="pdf_content",
-        href="document.html",
-        title=metadata.title,
-        content=html_content,
-        text=full_text,
-        order=0,
-    )
-
-    toc_entry = TOCEntry(title=metadata.title, href="document.html", file_href="document.html", anchor="")
-
-    final_book = Book(
-        metadata=metadata,
-        spine=[chapter],
-        toc=[toc_entry],
-        images={},
-        source_file=os.path.basename(pdf_path),
-        processed_at=datetime.now().isoformat(),
-    )
-
-    return final_book
+    sections = build_pdf_sections(reader, pages)
+    return book_from_pdf_sections(sections, metadata, os.path.basename(pdf_path))
 
 
 def save_to_pickle(book: Book, output_dir: str):

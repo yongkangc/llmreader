@@ -160,7 +160,7 @@
             </div>
             {% endif %}
 
-            <form method="POST" action="{{ root_path }}/login">
+            <form method="POST" action="{{ root_path }}/login?next={{ next | urlencode }}">
                 <input type="hidden" name="next" value="{{ next }}">
 
                 <div class="form-group">

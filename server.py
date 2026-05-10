@@ -28,6 +28,7 @@ from reader3 import (
     TOCEntry,
     process_epub,
     process_pdf,
+    rebuild_flattened_pdf_book,
     save_to_pickle,
 )
 
@@ -166,6 +167,15 @@ async def serve_manifest():
     return FileResponse(manifest_path, media_type="application/manifest+json")
 
 
+@app.get("/favicon.ico")
+async def serve_favicon():
+    """Serve the app icon as a browser favicon."""
+    icon_path = os.path.join("static", "icons", "icon-192.png")
+    if not os.path.exists(icon_path):
+        raise HTTPException(status_code=404, detail="Favicon not found")
+    return FileResponse(icon_path, media_type="image/png")
+
+
 # --- Authentication Middleware ---
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -184,6 +194,8 @@ async def auth_middleware(request: Request, call_next):
     if path == "/sw.js" or path == "/reader/sw.js":
         return await call_next(request)
     if path == "/manifest.json" or path == "/reader/manifest.json":
+        return await call_next(request)
+    if path == "/favicon.ico" or path == "/reader/favicon.ico":
         return await call_next(request)
 
     # Allow book images (served from /read/{book_id}/images/ or /reader/read/{book_id}/images/)
@@ -474,6 +486,11 @@ def load_book_cached(folder_name: str) -> Optional[Book]:
         # Migration: Add tags field for old books (version 3.0)
         if not hasattr(book.metadata, 'tags'):
             book.metadata.tags = []
+
+        rebuilt_book = rebuild_flattened_pdf_book(book)
+        if rebuilt_book is not None:
+            book = rebuilt_book
+            save_to_pickle(book, os.path.join(BOOKS_DIR, folder_name))
 
         return book
     except Exception as e:

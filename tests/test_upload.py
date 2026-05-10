@@ -11,6 +11,7 @@ from ebooklib import epub
 from fastapi.testclient import TestClient
 
 import server
+from reader3 import Book, BookMetadata, ChapterContent, TOCEntry, rebuild_flattened_pdf_book
 
 
 def make_test_epub(tmp_dir: Path) -> Path:
@@ -85,6 +86,7 @@ def with_library(tmp_path: Path):
     server.BOOKS_DIR = tmp_path.as_posix()
     server.load_book_cached.cache_clear()
     client = TestClient(server.app)
+    client.cookies.set(server.COOKIE_NAME, server.create_auth_cookie())
 
     try:
         yield client
@@ -130,6 +132,99 @@ def test_upload_pdf_creates_book(tmp_path):
 
         page = client.get("/")
         assert "sample" in page.text or "Hello" in page.text
+
+
+def test_rebuild_flattened_pdf_book_splits_chapters():
+    flattened_text = """
+Title Page
+
+Contents
+CHAPTER 1
+Alpha 1
+CHAPTER 2
+Beta 9
+
+CHAPTER 1
+Alpha
+Alpha body text.
+
+CHAPTER 2
+Beta
+Beta body text.
+""".strip()
+    book = Book(
+        metadata=BookMetadata(title="Synthetic PDF", language="en"),
+        spine=[ChapterContent(
+            id="pdf_content",
+            href="document.html",
+            title="Synthetic PDF",
+            content="<p>old</p>",
+            text=flattened_text,
+            order=0,
+        )],
+        toc=[TOCEntry(title="Synthetic PDF", href="document.html", file_href="document.html", anchor="")],
+        images={},
+        source_file="synthetic.pdf",
+        processed_at="2026-05-10T00:00:00",
+    )
+
+    rebuilt = rebuild_flattened_pdf_book(book)
+
+    assert rebuilt is not None
+    assert len(rebuilt.spine) == 3
+    assert [entry.title for entry in rebuilt.toc] == [
+        "Front Matter",
+        "Chapter 1: Alpha",
+        "Chapter 2: Beta",
+    ]
+    assert rebuilt.spine[1].href == "pdf-section-0002.html"
+    assert "Alpha body text." in rebuilt.spine[1].text
+    assert "Beta body text." in rebuilt.spine[2].text
+
+
+def test_reader_auto_migrates_flattened_pdf_book(tmp_path):
+    book_dir = tmp_path / "synthetic_data"
+    book_dir.mkdir()
+    flattened_text = """
+Contents
+CHAPTER 1
+Alpha 1
+CHAPTER 2
+Beta 9
+
+CHAPTER 1
+Alpha
+Alpha body text.
+
+CHAPTER 2
+Beta
+Beta body text.
+""".strip()
+    book = Book(
+        metadata=BookMetadata(title="Synthetic PDF", language="en"),
+        spine=[ChapterContent(
+            id="pdf_content",
+            href="document.html",
+            title="Synthetic PDF",
+            content="<p>old</p>",
+            text=flattened_text,
+            order=0,
+        )],
+        toc=[TOCEntry(title="Synthetic PDF", href="document.html", file_href="document.html", anchor="")],
+        images={},
+        source_file="synthetic.pdf",
+        processed_at="2026-05-10T00:00:00",
+    )
+    import pickle
+    with open(book_dir / "book.pkl", "wb") as f:
+        pickle.dump(book, f)
+
+    with with_library(tmp_path) as client:
+        resp = client.get("/read/synthetic_data/2")
+
+    assert resp.status_code == 200
+    assert "Chapter 2: Beta" in resp.text
+    assert "Beta body text." in resp.text
 
 
 def test_upload_rejects_non_epub(tmp_path):
