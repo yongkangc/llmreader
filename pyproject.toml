@@ -16,4 +16,5 @@ dependencies = [
     "pypdf>=5.1.0",
     "itsdangerous>=2.0",
     "python-dotenv>=1.0.0",
+    "pymupdf>=1.27.2.3",
 ]

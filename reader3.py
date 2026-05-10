@@ -85,6 +85,7 @@ class PdfSection:
     text: str
     start_page: int
     end_page: int
+    html: Optional[str] = None
 
 
 # --- Utilities ---
@@ -210,13 +211,51 @@ def _html_from_pdf_text(title: str, text: str, start_page: int, end_page: int) -
     blocks.append(f"<h1>{escape(title)}</h1>")
 
     paragraph_lines: List[str] = []
+    skipping_chart_text = False
+
+    def flush_paragraph() -> None:
+        nonlocal paragraph_lines
+        if paragraph_lines:
+            blocks.append(f"<p>{escape(' '.join(paragraph_lines))}</p>")
+            paragraph_lines = []
+
+    def is_chart_label_line(value: str) -> bool:
+        compact = value.replace(" ", "")
+        if not compact:
+            return False
+        if re.fullmatch(r"[\-$0-9.,]+", compact):
+            return True
+        if re.fullmatch(r"(Q[1-4]){2,}", compact, re.I):
+            return True
+        if re.fullmatch(r"[0-9]{4}([0-9]{4})+", compact):
+            return True
+        return len(value) <= 80 and bool(re.fullmatch(r"[\sQq0-9.,$%+\-–—]+", value))
+
     for raw_line in text.splitlines():
         line = raw_line.strip()
         if not line:
-            if paragraph_lines:
-                blocks.append(f"<p>{escape(' '.join(paragraph_lines))}</p>")
-                paragraph_lines = []
+            if not skipping_chart_text:
+                flush_paragraph()
             continue
+
+        figure_caption = re.match(r"^\$?\s*(FIGURE\s+\d+(\.\d+)?\b.*)$", line, re.I)
+        if figure_caption:
+            flush_paragraph()
+            caption = figure_caption.group(1)
+            figure_class = "pdf-figure pdf-figure-missing" if skipping_chart_text else "pdf-figure"
+            blocks.append(f'<figure class="{figure_class}"><figcaption>{escape(caption)}</figcaption></figure>')
+            skipping_chart_text = False
+            continue
+
+        if is_chart_label_line(line):
+            flush_paragraph()
+            skipping_chart_text = True
+            continue
+
+        if skipping_chart_text and len(line) <= 30:
+            continue
+
+        skipping_chart_text = False
 
         # Keep obvious section headings scannable instead of burying them in prose.
         is_heading = (
@@ -227,15 +266,12 @@ def _html_from_pdf_text(title: str, text: str, start_page: int, end_page: int) -
             )
         )
         if is_heading:
-            if paragraph_lines:
-                blocks.append(f"<p>{escape(' '.join(paragraph_lines))}</p>")
-                paragraph_lines = []
+            flush_paragraph()
             blocks.append(f"<h2>{escape(line)}</h2>")
         else:
             paragraph_lines.append(line)
 
-    if paragraph_lines:
-        blocks.append(f"<p>{escape(' '.join(paragraph_lines))}</p>")
+    flush_paragraph()
 
     return "\n".join(blocks)
 
@@ -346,6 +382,45 @@ def _sections_from_chapter_headings(text: str) -> List[PdfSection]:
     return sections
 
 
+def _sections_from_page_headings(pages: List[PdfPageText]) -> List[PdfSection]:
+    """Split PDFs by chapter headings while preserving page ranges."""
+    matches: List[tuple[str, str, int]] = []
+    for page in pages:
+        for match in _CHAPTER_HEADING_RE.finditer(page.text):
+            matches.append((match.group(1), _chapter_title_from_heading(match), page.page_number))
+
+    if len(matches) < 2:
+        return []
+
+    by_number: Dict[str, List[tuple[str, str, int]]] = {}
+    for match in matches:
+        by_number.setdefault(match[0], []).append(match)
+
+    body_matches: List[tuple[str, str, int]] = []
+    for chapter_matches in by_number.values():
+        body_matches.append(chapter_matches[-1] if len(chapter_matches) >= 2 else chapter_matches[0])
+
+    body_matches.sort(key=lambda item: item[2])
+    if len(body_matches) < 2:
+        return []
+
+    sections: List[PdfSection] = []
+    first_page = body_matches[0][2]
+    if first_page > 0:
+        front_text = "\n\n".join(page.text for page in pages[:first_page] if page.text).strip()
+        if front_text:
+            sections.append(PdfSection("Front Matter", front_text, 0, first_page - 1))
+
+    for index, (_, title, start_page) in enumerate(body_matches):
+        next_page = body_matches[index + 1][2] if index + 1 < len(body_matches) else len(pages)
+        section_pages = pages[start_page:next_page]
+        text = "\n\n".join(page.text for page in section_pages if page.text).strip()
+        if text:
+            sections.append(PdfSection(title, text, start_page, next_page - 1))
+
+    return sections
+
+
 def _sections_from_pages(pages: List[PdfPageText], pages_per_section: int = 12) -> List[PdfSection]:
     """Last-resort fallback so long PDFs are still navigable."""
     sections: List[PdfSection] = []
@@ -365,6 +440,10 @@ def build_pdf_sections(reader: PdfReader, pages: List[PdfPageText]) -> List[PdfS
     outline_sections = _sections_from_outline(reader, pages)
     if outline_sections:
         return outline_sections
+
+    page_heading_sections = _sections_from_page_headings(pages)
+    if page_heading_sections:
+        return page_heading_sections
 
     full_text = "\n\n".join(page.text for page in pages if page.text).strip()
     heading_sections = _sections_from_chapter_headings(full_text)
@@ -400,6 +479,7 @@ def book_from_pdf_sections(
     sections: List[PdfSection],
     metadata: BookMetadata,
     source_file: str,
+    images: Optional[Dict[str, str]] = None,
 ) -> Book:
     """Create the shared Book model from already-derived PDF sections."""
     spine_chapters: List[ChapterContent] = []
@@ -411,7 +491,7 @@ def book_from_pdf_sections(
             id=f"pdf_section_{index + 1}",
             href=href,
             title=section.title,
-            content=_html_from_pdf_text(section.title, section.text, section.start_page, section.end_page),
+            content=section.html or _html_from_pdf_text(section.title, section.text, section.start_page, section.end_page),
             text=section.text,
             order=index,
         ))
@@ -421,10 +501,156 @@ def book_from_pdf_sections(
         metadata=metadata,
         spine=spine_chapters,
         toc=toc,
-        images={},
+        images=images or {},
         source_file=source_file,
         processed_at=datetime.now().isoformat(),
     )
+
+
+def _rect_overlap_ratio(a: Any, b: Any) -> float:
+    """Return how much of rect a is covered by rect b."""
+    inter = a & b
+    if inter.is_empty or a.get_area() <= 0:
+        return 0.0
+    return inter.get_area() / a.get_area()
+
+
+def _render_pdf_figure(page: Any, page_number: int, images_dir: str) -> tuple[Optional[str], Optional[Any]]:
+    """Render a page drawing/image region to an image file."""
+    try:
+        import fitz
+    except Exception:
+        return None, None
+
+    page_rect = page.rect
+    rects = []
+
+    for image_info in page.get_image_info(xrefs=True):
+        bbox = image_info.get("bbox")
+        if bbox:
+            rects.append(fitz.Rect(bbox))
+
+    drawings = page.get_drawings()
+    if len(drawings) >= 8:
+        for drawing in drawings:
+            rect = drawing.get("rect")
+            if rect:
+                drawing_rect = fitz.Rect(rect) + (-2, -2, 2, 2)
+                if not drawing_rect.is_empty:
+                    rects.append(drawing_rect)
+
+    if not rects:
+        return None, None
+
+    figure_rect = rects[0]
+    for rect in rects[1:]:
+        figure_rect |= rect
+
+    # Expand enough to capture axis labels and captions near vector charts.
+    figure_rect = figure_rect + (-40, -24, 40, 70)
+    figure_rect &= page_rect
+
+    area_ratio = figure_rect.get_area() / page_rect.get_area()
+    if area_ratio < 0.03 or area_ratio > 0.8:
+        return None, None
+
+    image_name = f"pdf-page-{page_number + 1:04d}-figure.png"
+    image_path = os.path.join(images_dir, image_name)
+    pixmap = page.get_pixmap(matrix=fitz.Matrix(2, 2), clip=figure_rect, alpha=False)
+    pixmap.save(image_path)
+
+    return f"images/{image_name}", figure_rect
+
+
+def _html_pages_from_pdf(pdf_path: str, output_dir: str) -> tuple[List[str], Dict[str, str]]:
+    """
+    Build per-page HTML with rendered figures for vector/image-heavy PDF pages.
+    Falls back silently when PyMuPDF is unavailable.
+    """
+    try:
+        import fitz
+    except Exception:
+        return [], {}
+
+    images_dir = os.path.join(output_dir, "images")
+    os.makedirs(images_dir, exist_ok=True)
+    image_map: Dict[str, str] = {}
+    page_html: List[str] = []
+
+    with fitz.open(pdf_path) as doc:
+        for page_number, page in enumerate(doc):
+            figure_src, figure_rect = _render_pdf_figure(page, page_number, images_dir)
+            if figure_src:
+                image_map[figure_src] = figure_src
+
+            blocks = page.get_text("dict").get("blocks", [])
+            html_blocks: List[str] = [f'<section class="pdf-page" id="pdf-page-{page_number + 1}">']
+            figure_inserted = False
+
+            for block in blocks:
+                bbox = block.get("bbox")
+                block_rect = fitz.Rect(bbox) if bbox else None
+                overlaps_figure = (
+                    figure_rect is not None
+                    and block_rect is not None
+                    and _rect_overlap_ratio(block_rect, figure_rect) > 0.2
+                )
+
+                if overlaps_figure:
+                    if figure_src and not figure_inserted:
+                        html_blocks.append(
+                            f'<figure class="pdf-figure"><img src="{figure_src}" alt="Figure from page {page_number + 1}"></figure>'
+                        )
+                        figure_inserted = True
+                    continue
+
+                if block.get("type") != 0:
+                    continue
+
+                lines = []
+                for line in block.get("lines", []):
+                    line_text = "".join(span.get("text", "") for span in line.get("spans", [])).strip()
+                    if line_text:
+                        lines.append(line_text)
+
+                if not lines:
+                    continue
+
+                text = " ".join(lines)
+                if len(text) <= 90 and (text.isupper() or re.match(r"^(\d+(\.\d+)*|CHAPTER|Appendix)\b", text, re.I)):
+                    html_blocks.append(f"<h2>{escape(text)}</h2>")
+                else:
+                    html_blocks.append(f"<p>{escape(text)}</p>")
+
+            if figure_src and not figure_inserted:
+                html_blocks.append(
+                    f'<figure class="pdf-figure"><img src="{figure_src}" alt="Figure from page {page_number + 1}"></figure>'
+                )
+
+            html_blocks.append("</section>")
+            page_html.append("\n".join(html_blocks))
+
+    return page_html, image_map
+
+
+def _attach_page_html_to_sections(sections: List[PdfSection], page_html: List[str]) -> List[PdfSection]:
+    if not page_html:
+        return sections
+
+    enriched: List[PdfSection] = []
+    for section in sections:
+        if section.start_page < 0 or section.end_page < section.start_page:
+            enriched.append(section)
+            continue
+        html = "\n".join(page_html[section.start_page:section.end_page + 1])
+        enriched.append(PdfSection(
+            title=section.title,
+            text=section.text,
+            start_page=section.start_page,
+            end_page=section.end_page,
+            html=_html_from_pdf_text(section.title, "", section.start_page, section.end_page) + "\n" + html,
+        ))
+    return enriched
 
 
 # --- Main Conversion Logic ---
@@ -548,6 +774,12 @@ def process_pdf(pdf_path: str, output_dir: str) -> Book:
     print(f"Loading {pdf_path}...")
     reader = PdfReader(pdf_path)
 
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
+    images_dir = os.path.join(output_dir, "images")
+    os.makedirs(images_dir, exist_ok=True)
+    shutil.copy2(pdf_path, os.path.join(output_dir, os.path.basename(pdf_path)))
+
     pages: List[PdfPageText] = []
     for page_number, page in enumerate(reader.pages):
         try:
@@ -558,11 +790,6 @@ def process_pdf(pdf_path: str, output_dir: str) -> Book:
             except Exception:
                 content = ""
         pages.append(PdfPageText(page_number=page_number, text=content.strip()))
-
-    if os.path.exists(output_dir):
-        shutil.rmtree(output_dir)
-    images_dir = os.path.join(output_dir, "images")
-    os.makedirs(images_dir, exist_ok=True)
 
     metadata = BookMetadata(
         title=(reader.metadata.title if reader.metadata else None) or os.path.splitext(os.path.basename(pdf_path))[0],
@@ -576,7 +803,9 @@ def process_pdf(pdf_path: str, output_dir: str) -> Book:
     )
 
     sections = build_pdf_sections(reader, pages)
-    return book_from_pdf_sections(sections, metadata, os.path.basename(pdf_path))
+    page_html, image_map = _html_pages_from_pdf(pdf_path, output_dir)
+    sections = _attach_page_html_to_sections(sections, page_html)
+    return book_from_pdf_sections(sections, metadata, os.path.basename(pdf_path), images=image_map)
 
 
 def save_to_pickle(book: Book, output_dir: str):
