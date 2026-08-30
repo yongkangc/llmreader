@@ -842,6 +842,7 @@ async def get_book_progress(book_id: str):
 
 
 @app.put("/api/books/{book_id}/progress")
+@app.post("/api/books/{book_id}/progress")
 async def update_book_progress(book_id: str, request: Request):
     """
     Update reading progress for a specific book.

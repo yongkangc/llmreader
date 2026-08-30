@@ -73,8 +73,28 @@
             --heading-color: #d4d4d4;
         }
 
+        body.warm-mode {
+            --bg-main: #f7f1e3;
+            --bg-sidebar: #eee5d2;
+            --bg-button: #f1e8d6;
+            --bg-button-hover: #e6dbc5;
+            --text-primary: #382f26;
+            --text-secondary: #625548;
+            --text-muted: #7b6c5d;
+            --border-light: #e1d6c1;
+            --border-medium: #d4c6ad;
+            --border-dark: #b8a78b;
+            --heading-color: #312920;
+        }
+
+        /* The Light reading theme is intentionally paper-white. */
+        body.page-reader:not(.dark-mode):not(.warm-mode) {
+            --bg-main: #ffffff;
+            --bg-sidebar: #f8f9fa;
+        }
+
         /* Layout */
-        body { margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; font-family: "Georgia", serif; background: var(--bg-main); transition: background-color 0.3s, color 0.3s; }
+        body { margin: 0; padding: 0; display: flex; height: 100vh; height: 100dvh; overflow: hidden; font-family: "Georgia", serif; background: var(--bg-main); transition: background-color 0.3s, color 0.3s; }
 
         /* Sidebar */
         #sidebar { width: 300px; background: var(--bg-sidebar); border-right: 1px solid var(--border-light); overflow-y: auto; padding: 60px 20px 20px 20px; flex-shrink: 0; transition: transform 0.3s var(--ease, ease), width 0.3s ease, padding 0.3s ease, background-color 0.3s, border-color 0.3s; position: relative; z-index: 10; scrollbar-width: thin; scrollbar-color: var(--border-subtle) transparent; }
@@ -199,9 +219,11 @@
 
             /* Auto-hide sidebar toggle on mobile */
             .sidebar-toggle.hidden {
-                opacity: 0;
-                pointer-events: none;
+                opacity: 0.35;
+                pointer-events: auto;
             }
+
+            .sidebar-toggle:focus-visible { opacity: 1; }
 
             body.sidebar-collapsed .sidebar-toggle {
                 left: 10px;
@@ -267,6 +289,9 @@
         /* Hide close button on desktop */
         .sidebar-close {
             display: none;
+        }
+        @media (max-width: 768px) {
+            #sidebar .sidebar-close { display: block; }
         }
 
         /* Sidebar backdrop - separate element for click handling */
@@ -887,6 +912,26 @@
         .font-family-option.font-mono {
             font-family: 'SF Mono', Menlo, Consolas, monospace;
         }
+        .reader-setting-group { margin-top: 14px; }
+        .reader-setting-group > label { display: block; margin-bottom: 7px; color: var(--text-muted); font-size: 0.78em; font-weight: 600; }
+        .reader-preset-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+        .reader-preset-option, .reader-reset-btn { border: 1px solid var(--border-medium); border-radius: 4px; padding: 7px 6px; background: var(--bg-main); color: var(--text-primary); cursor: pointer; font: inherit; font-size: 0.78em; }
+        .reader-preset-option:hover, .reader-reset-btn:hover { background: var(--bg-button-hover); }
+        .reader-preset-option.active { border-color: var(--accent-primary); background: var(--bg-button-hover); }
+        .reader-reset-btn { width: 100%; margin-top: 14px; }
+
+        .reading-progress { position: fixed; left: 0; right: 0; bottom: 0; height: 3px; z-index: 40; background: transparent; pointer-events: none; }
+        .reading-progress-fill { width: 0; height: 100%; background: var(--accent-primary); opacity: 0.72; transition: width 0.12s linear; }
+        .reading-progress-status { position: fixed; right: 14px; bottom: 10px; z-index: 39; padding: 4px 8px; border-radius: 999px; background: color-mix(in srgb, var(--bg-main) 88%, transparent); color: var(--text-muted); font: 600 0.72rem/1.2 var(--font-sans, -apple-system, sans-serif); opacity: 0.82; pointer-events: none; }
+
+        @media (max-width: 480px) {
+            .reading-progress-status { display: none; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #main { scroll-behavior: auto; }
+            #sidebar, .content-container, .reading-progress-fill { transition-duration: 0.01ms; }
+        }
 
         /* Search Bar - slide down animation */
         .search-container {
@@ -1040,7 +1085,7 @@
 </head>
 <body class="page-reader">
     <!-- Sidebar Toggle Button -->
-    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Toggle sidebar">
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Toggle sidebar" aria-label="Toggle table of contents" aria-controls="sidebar" aria-expanded="true">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="sidebarIcon">
             <!-- Hamburger icon (default - sidebar open) -->
             <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"></path>
@@ -1048,12 +1093,12 @@
     </button>
 
     <!-- Sidebar Backdrop (for mobile click-to-close) -->
-    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar(true)" aria-hidden="true"></div>
 
     <!-- SIDEBAR -->
-    <div id="sidebar">
+    <nav id="sidebar" aria-label="Table of contents">
         <!-- Close button for mobile -->
-        <button class="sidebar-close" onclick="closeSidebar()" title="Close sidebar">✕</button>
+        <button class="sidebar-close" id="sidebarClose" onclick="closeSidebar(true)" title="Close sidebar" aria-label="Close table of contents">✕</button>
         <a href="{{ root_path }}/" class="nav-home">← Back to Library</a>
         <div class="nav-header">{{ book.metadata.title }}</div>
 
@@ -1091,7 +1136,8 @@
                        BETTER FIX: Use JavaScript to match filenames.
                     -->
                     <a href="#" onclick="findAndGo('{{ item.href }}')"
-                       class="toc-link {% if is_active %}active{% endif %}">
+                       class="toc-link {% if is_active %}active{% endif %}"
+                       {% if is_active %}aria-current="location"{% endif %}>
                         {{ item.title }}
                     </a>
 
@@ -1104,7 +1150,7 @@
         {% endmacro %}
 
         {{ render_toc(book.toc) }}
-    </div>
+    </nav>
 
     <!-- MAIN CONTENT -->
     <main id="main">
@@ -1160,7 +1206,7 @@
             </div>
             <!-- Font Settings -->
             <div class="font-settings-container" style="position: relative;">
-                <button class="font-settings-btn" id="fontSettingsBtn" onclick="toggleFontSettings()" title="Font settings">
+                <button class="font-settings-btn" id="fontSettingsBtn" onclick="toggleFontSettings()" title="Reading settings" aria-haspopup="true" aria-expanded="false" aria-controls="fontSettingsPanel">
                     <span style="font-weight: bold;">Aa</span>
                 </button>
                 <div class="font-settings-panel" id="fontSettingsPanel">
@@ -1186,6 +1232,31 @@
                             </button>
                         </div>
                     </div>
+                    <div class="reader-setting-group">
+                        <label>Text width</label>
+                        <div class="reader-preset-options" id="measureOptions">
+                            <button class="reader-preset-option" data-setting="measure" data-value="54">Narrow</button>
+                            <button class="reader-preset-option" data-setting="measure" data-value="66">Comfort</button>
+                            <button class="reader-preset-option" data-setting="measure" data-value="78">Wide</button>
+                        </div>
+                    </div>
+                    <div class="reader-setting-group">
+                        <label>Line spacing</label>
+                        <div class="reader-preset-options" id="lineHeightOptions">
+                            <button class="reader-preset-option" data-setting="lineHeight" data-value="1.55">Compact</button>
+                            <button class="reader-preset-option" data-setting="lineHeight" data-value="1.72">Comfort</button>
+                            <button class="reader-preset-option" data-setting="lineHeight" data-value="1.9">Airy</button>
+                        </div>
+                    </div>
+                    <div class="reader-setting-group">
+                        <label>Theme</label>
+                        <div class="reader-preset-options" id="readerThemeOptions" role="group" aria-label="Reading theme">
+                            <button class="reader-preset-option" data-setting="theme" data-value="light">Light</button>
+                            <button class="reader-preset-option" data-setting="theme" data-value="warm">Warm</button>
+                            <button class="reader-preset-option" data-setting="theme" data-value="dark">Dark</button>
+                        </div>
+                    </div>
+                    <button class="reader-reset-btn" type="button" onclick="resetReaderSettings()">Reset reading settings</button>
                 </div>
             </div>
 
@@ -1282,6 +1353,11 @@
             <button class="tts-btn tts-close" onclick="closeTtsPlayer()" title="Close">✕</button>
         </div>
 
+        <div class="reading-progress" id="readingProgress" role="progressbar" aria-label="Book reading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="reading-progress-fill" id="readingProgressFill"></div>
+        </div>
+        <div class="reading-progress-status" id="readingProgressStatus" aria-hidden="true">Section {{ chapter_index + 1 }} of {{ book.spine|length }}</div>
+
         <!-- TTS Speed Selection Popup -->
         <div class="tts-speed-popup" id="ttsSpeedPopup">
             <button onclick="setTtsSpeed(0.5)">0.5x</button>
@@ -1332,19 +1408,8 @@
                     url += "#" + anchor;
                 }
 
-                // Auto-close sidebar after clicking TOC link
-                const isMobile = window.innerWidth <= 768;
-                if (isMobile) {
-                    // On mobile, close the sidebar
-                    document.body.classList.remove('sidebar-open');
-                    updateSidebarIcon(true);
-                    localStorage.setItem('sidebar', 'closed');
-                } else {
-                    // On desktop, collapse the sidebar
-                    document.body.classList.add('sidebar-collapsed');
-                    updateSidebarIcon(true);
-                    localStorage.setItem('sidebar', 'closed');
-                }
+                // The mobile TOC is an overlay; the desktop TOC is persistent.
+                if (window.innerWidth <= 768) closeSidebar();
 
                 window.location.href = url;
             } else {
@@ -1451,6 +1516,7 @@
             document.querySelectorAll('.toc-link').forEach(link => {
                 link.classList.remove('active');
                 link.classList.remove('active-parent');
+                link.removeAttribute('aria-current');
             });
 
             // Find and activate the matching TOC link
@@ -1471,6 +1537,7 @@
                         if (linkHref === targetHref) {
                             console.log('EXACT MATCH:', linkHref);
                             link.classList.add('active');
+                            link.setAttribute('aria-current', 'location');
                             activeLink = link;
                             matchFound = true;
                         }
@@ -1486,6 +1553,7 @@
             if (!matchFound && firstChapterLink) {
                 console.log('FALLBACK MATCH:', firstChapterLink.textContent.trim().substring(0, 50));
                 firstChapterLink.classList.add('active');
+                firstChapterLink.setAttribute('aria-current', 'location');
                 activeLink = firstChapterLink;
                 matchFound = true;
             }
@@ -1598,23 +1666,24 @@
         }
 
         function toggleDarkMode() {
-            const body = document.body;
-            const isDark = body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            updateThemeIcon(isDark);
+            setReaderTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark');
         }
 
         function initTheme() {
-            // Check localStorage first, then system preference
-            let theme = localStorage.getItem('theme');
-            if (!theme) {
-                // Check system preference
-                theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-            }
+            // Reader settings own the reading theme. Only migrate the legacy
+            // app-wide light/dark preference when no reader settings exist.
+            let saved = null;
+            try { saved = JSON.parse(localStorage.getItem('readerSettings:v1')); } catch (error) { /* use default */ }
+            const legacyTheme = localStorage.getItem('theme');
+            const theme = saved && ['light', 'warm', 'dark'].includes(saved.theme)
+                ? saved.theme
+                : (legacyTheme === 'dark' ? 'dark' : 'light');
 
             if (theme === 'dark') {
                 document.body.classList.add('dark-mode');
                 updateThemeIcon(true);
+            } else if (theme === 'warm') {
+                document.body.classList.add('warm-mode');
             }
         }
 
@@ -1627,20 +1696,66 @@
             sans: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
             mono: '"SF Mono", Menlo, Consolas, monospace'
         };
+        const readerSettingsKey = 'readerSettings:v1';
+        const readerDefaults = { version: 1, fontSize: 18, fontFamily: 'serif', measure: 66, lineHeight: 1.72, theme: 'light' };
+        let readerSettings = { ...readerDefaults };
+        let currentFontSize = readerDefaults.fontSize;
+        let currentFontFamily = readerDefaults.fontFamily;
 
-        let currentFontSize = 18;
-        let currentFontFamily = 'serif';
+        function clampNumber(value, min, max, fallback) {
+            if (value === null || value === undefined || value === '') return fallback;
+            const numeric = Number(value);
+            return Number.isFinite(numeric) ? Math.min(max, Math.max(min, numeric)) : fallback;
+        }
+
+        function sanitizeReaderSettings(value) {
+            const source = value && value.version === 1 ? value : {};
+            const family = fontFamilies[source.fontFamily] ? source.fontFamily : readerDefaults.fontFamily;
+            const theme = ['light', 'warm', 'dark'].includes(source.theme) ? source.theme : readerDefaults.theme;
+            return {
+                version: 1,
+                fontSize: clampNumber(source.fontSize, 12, 28, readerDefaults.fontSize),
+                fontFamily: family,
+                measure: clampNumber(source.measure, 50, 82, readerDefaults.measure),
+                lineHeight: clampNumber(source.lineHeight, 1.4, 2, readerDefaults.lineHeight),
+                theme
+            };
+        }
+
+        function getPassageAnchor() {
+            const main = document.getElementById('main');
+            const mainTop = main.getBoundingClientRect().top;
+            const candidates = document.querySelectorAll('#chapterContent p, #chapterContent li, #chapterContent h1, #chapterContent h2, #chapterContent h3');
+            for (const element of candidates) {
+                const rect = element.getBoundingClientRect();
+                if (rect.bottom > mainTop + 8) return { element, offset: rect.top - mainTop };
+            }
+            return null;
+        }
+
+        function preservePassageWhile(change) {
+            const anchor = getPassageAnchor();
+            change();
+            if (!anchor) return;
+            requestAnimationFrame(() => {
+                const main = document.getElementById('main');
+                const nextOffset = anchor.element.getBoundingClientRect().top - main.getBoundingClientRect().top;
+                main.scrollTop += nextOffset - anchor.offset;
+                updateReadingProgress();
+            });
+        }
 
         function toggleFontSettings() {
             const panel = document.getElementById('fontSettingsPanel');
-            panel.classList.toggle('show');
+            const isOpen = panel.classList.toggle('show');
+            document.getElementById('fontSettingsBtn').setAttribute('aria-expanded', String(isOpen));
         }
 
         function changeFontSize(delta) {
             const minSize = 12;
             const maxSize = 28;
             currentFontSize = Math.max(minSize, Math.min(maxSize, currentFontSize + delta));
-            applyFontSettings();
+            preservePassageWhile(applyFontSettings);
             saveFontSettings();
         }
 
@@ -1655,34 +1770,62 @@
                 }
             });
 
-            applyFontSettings();
+            preservePassageWhile(applyFontSettings);
             saveFontSettings();
+        }
+
+        function setReaderTheme(theme) {
+            readerSettings.theme = ['light', 'warm', 'dark'].includes(theme) ? theme : readerDefaults.theme;
+            applyReaderTheme();
+            saveFontSettings();
+        }
+
+        function applyReaderTheme() {
+            document.body.classList.toggle('dark-mode', readerSettings.theme === 'dark');
+            document.body.classList.toggle('warm-mode', readerSettings.theme === 'warm');
+            updateThemeIcon(readerSettings.theme === 'dark');
         }
 
         function applyFontSettings() {
             const content = document.getElementById('chapterContent');
             content.style.fontSize = currentFontSize + 'px';
             content.style.fontFamily = fontFamilies[currentFontFamily];
+            content.style.maxWidth = readerSettings.measure + 'ch';
+            content.style.lineHeight = readerSettings.lineHeight;
 
             // Update the size display
             document.getElementById('fontSizeValue').textContent = currentFontSize;
+            document.querySelectorAll('.reader-preset-option').forEach(btn => {
+                const selected = btn.dataset.setting === 'theme'
+                    ? btn.dataset.value === readerSettings.theme
+                    : Number(btn.dataset.value) === readerSettings[btn.dataset.setting];
+                btn.classList.toggle('active', selected);
+                btn.setAttribute('aria-pressed', String(selected));
+            });
+            applyReaderTheme();
         }
 
         function saveFontSettings() {
-            localStorage.setItem('readerFontSize', currentFontSize);
-            localStorage.setItem('readerFontFamily', currentFontFamily);
+            readerSettings.fontSize = currentFontSize;
+            readerSettings.fontFamily = currentFontFamily;
+            localStorage.setItem(readerSettingsKey, JSON.stringify(sanitizeReaderSettings(readerSettings)));
         }
 
         function loadFontSettings() {
-            const savedSize = localStorage.getItem('readerFontSize');
-            const savedFamily = localStorage.getItem('readerFontFamily');
-
-            if (savedSize) {
-                currentFontSize = parseInt(savedSize, 10);
+            let saved = null;
+            try { saved = JSON.parse(localStorage.getItem(readerSettingsKey)); } catch (error) { /* use safe defaults */ }
+            if (!saved) {
+                const legacyTheme = localStorage.getItem('theme');
+                saved = {
+                    version: 1,
+                    fontSize: localStorage.getItem('readerFontSize'),
+                    fontFamily: localStorage.getItem('readerFontFamily'),
+                    theme: legacyTheme === 'dark' ? 'dark' : 'light'
+                };
             }
-            if (savedFamily && fontFamilies[savedFamily]) {
-                currentFontFamily = savedFamily;
-            }
+            readerSettings = sanitizeReaderSettings(saved);
+            currentFontSize = readerSettings.fontSize;
+            currentFontFamily = readerSettings.fontFamily;
 
             // Update active button state
             document.querySelectorAll('.font-family-option').forEach(btn => {
@@ -1693,7 +1836,34 @@
             });
 
             applyFontSettings();
+            saveFontSettings();
         }
+
+        function resetReaderSettings() {
+            preservePassageWhile(() => {
+                readerSettings = { ...readerDefaults };
+                currentFontSize = readerDefaults.fontSize;
+                currentFontFamily = readerDefaults.fontFamily;
+                applyFontSettings();
+            });
+            saveFontSettings();
+        }
+
+        document.querySelectorAll('.reader-preset-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const setting = btn.dataset.setting;
+                if (setting === 'theme') {
+                    setReaderTheme(btn.dataset.value);
+                    applyFontSettings();
+                    return;
+                }
+                preservePassageWhile(() => {
+                    readerSettings[setting] = Number(btn.dataset.value);
+                    applyFontSettings();
+                });
+                saveFontSettings();
+            });
+        });
 
         // Initialize font settings
         loadFontSettings();
@@ -1704,12 +1874,25 @@
             const btn = document.getElementById('fontSettingsBtn');
             if (!panel.contains(e.target) && !btn.contains(e.target)) {
                 panel.classList.remove('show');
+                btn.setAttribute('aria-expanded', 'false');
             }
         });
 
         // Sidebar Toggle Functions
         function updateSidebarIcon(isCollapsed) {
             const icon = document.getElementById('sidebarIcon');
+            const sidebar = document.getElementById('sidebar');
+            const main = document.getElementById('main');
+            const isMobileOpen = window.innerWidth <= 768 && !isCollapsed;
+            document.getElementById('sidebarToggle').setAttribute('aria-expanded', String(!isCollapsed));
+            sidebar.setAttribute('aria-hidden', String(isCollapsed));
+            sidebar.toggleAttribute('inert', isCollapsed);
+            main.toggleAttribute('inert', isMobileOpen);
+            if (isMobileOpen) {
+                main.setAttribute('aria-hidden', 'true');
+            } else {
+                main.removeAttribute('aria-hidden');
+            }
             if (isCollapsed) {
                 // Hamburger icon (sidebar closed - click to open)
                 icon.innerHTML = '<path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"></path>';
@@ -1719,15 +1902,16 @@
             }
         }
 
-        function closeSidebar() {
+        function closeSidebar(returnFocus = false) {
             const isMobile = window.innerWidth <= 768;
             if (isMobile) {
                 document.body.classList.remove('sidebar-open');
             } else {
                 document.body.classList.add('sidebar-collapsed');
+                localStorage.setItem('readerSidebarDesktop', 'closed');
             }
+            if (returnFocus) document.getElementById('sidebarToggle').focus();
             updateSidebarIcon(true);
-            localStorage.setItem('sidebar', 'closed');
         }
 
         function toggleSidebar() {
@@ -1737,17 +1921,17 @@
             if (isMobile) {
                 // On mobile, toggle sidebar-open class
                 const isOpen = body.classList.toggle('sidebar-open');
-                localStorage.setItem('sidebar', isOpen ? 'open' : 'closed');
                 updateSidebarIcon(!isOpen); // Icon shows opposite state
 
                 // Scroll to active chapter when opening sidebar
                 if (isOpen) {
                     setTimeout(scrollSidebarToActive, 100);
+                    setTimeout(() => document.getElementById('sidebarClose').focus(), 0);
                 }
             } else {
                 // On desktop, toggle sidebar-collapsed class
                 const isCollapsed = body.classList.toggle('sidebar-collapsed');
-                localStorage.setItem('sidebar', isCollapsed ? 'closed' : 'open');
+                localStorage.setItem('readerSidebarDesktop', isCollapsed ? 'closed' : 'open');
                 updateSidebarIcon(isCollapsed);
 
                 // Scroll to active chapter when opening sidebar
@@ -1758,27 +1942,14 @@
         }
 
         function initSidebar() {
-            // Check localStorage and screen size
-            let sidebarState = localStorage.getItem('sidebar');
             const isMobile = window.innerWidth <= 768;
-
-            // Auto-collapse on mobile if no saved preference
-            if (!sidebarState && isMobile) {
-                sidebarState = 'closed';
-            }
-
+            const desktopState = localStorage.getItem('readerSidebarDesktop') || localStorage.getItem('sidebar') || 'open';
+            document.body.classList.remove('sidebar-open', 'sidebar-collapsed');
             if (isMobile) {
-                // On mobile, use sidebar-open class
-                if (sidebarState === 'open') {
-                    document.body.classList.add('sidebar-open');
-                    updateSidebarIcon(false);
-                } else {
-                    // Default: sidebar hidden on mobile (no sidebar-open class)
-                    updateSidebarIcon(true);
-                }
+                // Mobile uses a transient overlay and always starts closed.
+                updateSidebarIcon(true);
             } else {
-                // On desktop, use sidebar-collapsed class
-                if (sidebarState === 'closed') {
+                if (desktopState === 'closed') {
                     document.body.classList.add('sidebar-collapsed');
                     updateSidebarIcon(true);
                 } else {
@@ -1789,6 +1960,8 @@
 
         // Initialize sidebar on page load
         initSidebar();
+        const sidebarBreakpoint = window.matchMedia('(max-width: 768px)');
+        sidebarBreakpoint.addEventListener('change', initSidebar);
 
         // Auto-hide sidebar toggle button on mobile after inactivity
         if (window.innerWidth <= 768) {
@@ -1820,18 +1993,33 @@
                 e.preventDefault();
                 toggleSidebar();
             }
+            if (e.key === 'Escape') {
+                // Other Escape handlers (search, inline editing) run later on
+                // document. Defer so their preventDefault takes precedence.
+                queueMicrotask(() => {
+                    if (e.defaultPrevented) return;
+                    const isMobileOpen = window.innerWidth <= 768 && document.body.classList.contains('sidebar-open');
+                    const isDesktopOpen = window.innerWidth > 768 && !document.body.classList.contains('sidebar-collapsed');
+                    if (isMobileOpen || isDesktopOpen) {
+                        e.preventDefault();
+                        closeSidebar(true);
+                    }
+                });
+            }
         });
 
         // Keyboard navigation: Arrow keys for chapter navigation and scrolling
         document.addEventListener('keydown', function(e) {
-            // Ignore if user is typing in an input field or textarea
-            const activeEl = document.activeElement;
-            if (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') {
+            // Ignore interactive/editable targets and modified shortcuts.
+            const target = e.target;
+            if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey ||
+                (target instanceof Element && target.closest('input, textarea, select, button, a, [contenteditable], [role="textbox"], [role="button"], [role="link"], [role="menuitem"], [role="slider"]'))) {
                 return;
             }
 
             const mainContainer = document.getElementById('main');
             const scrollAmount = window.innerHeight * 0.8; // Scroll 80% of viewport height
+            const scrollBehavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 
             switch (e.key) {
                 case 'ArrowLeft':
@@ -1852,16 +2040,36 @@
                     e.preventDefault();
                     mainContainer.scrollBy({
                         top: -scrollAmount,
-                        behavior: 'smooth'
+                        behavior: scrollBehavior
                     });
                     break;
                 case 'ArrowDown':
-                case ' ':  // Spacebar
                     e.preventDefault();
                     mainContainer.scrollBy({
                         top: scrollAmount,
-                        behavior: 'smooth'
+                        behavior: scrollBehavior
                     });
+                    break;
+                case ' ':
+                    if (typeof TtsPlayer !== 'undefined' && TtsPlayer.state && TtsPlayer.state.isActive) return;
+                    e.preventDefault();
+                    mainContainer.scrollBy({ top: e.shiftKey ? -scrollAmount : scrollAmount, behavior: scrollBehavior });
+                    break;
+                case 'PageUp':
+                    e.preventDefault();
+                    mainContainer.scrollBy({ top: -scrollAmount, behavior: scrollBehavior });
+                    break;
+                case 'PageDown':
+                    e.preventDefault();
+                    mainContainer.scrollBy({ top: scrollAmount, behavior: scrollBehavior });
+                    break;
+                case 'Home':
+                    e.preventDefault();
+                    mainContainer.scrollTo({ top: 0, behavior: scrollBehavior });
+                    break;
+                case 'End':
+                    e.preventDefault();
+                    mainContainer.scrollTo({ top: mainContainer.scrollHeight, behavior: scrollBehavior });
                     break;
             }
         });
@@ -2934,12 +3142,6 @@
                     // On mobile, close the sidebar overlay
                     document.body.classList.remove('sidebar-open');
                     updateSidebarIcon(true);
-                    localStorage.setItem('sidebar', 'closed');
-                } else if (!isMobile && !document.body.classList.contains('sidebar-collapsed')) {
-                    // On desktop, collapse the sidebar
-                    document.body.classList.add('sidebar-collapsed');
-                    updateSidebarIcon(true);
-                    localStorage.setItem('sidebar', 'closed');
                 }
             }
         }
@@ -2952,6 +3154,33 @@
 
         // ===== READING PROGRESS TRACKING =====
         const totalChapters = {{ book.spine|length }};
+
+        function getScrollPercent() {
+            const mainContainer = document.getElementById('main');
+            const scrollableHeight = mainContainer.scrollHeight - mainContainer.clientHeight;
+            return scrollableHeight > 0 ? Math.min(1, Math.max(0, mainContainer.scrollTop / scrollableHeight)) : 1;
+        }
+
+        let progressFrame = null;
+        function updateReadingProgress() {
+            const chapterPercent = getScrollPercent();
+            const overallPercent = totalChapters > 0 ? ((chapterIndex + chapterPercent) / totalChapters) * 100 : 100;
+            const roundedOverall = Math.round(overallPercent);
+            const roundedChapter = Math.round(chapterPercent * 100);
+            const progress = document.getElementById('readingProgress');
+            progress.setAttribute('aria-valuenow', String(roundedOverall));
+            progress.setAttribute('aria-valuetext', `Section ${chapterIndex + 1} of ${totalChapters}, ${roundedChapter}% through this section, ${roundedOverall}% through the book`);
+            document.getElementById('readingProgressFill').style.width = `${overallPercent}%`;
+            document.getElementById('readingProgressStatus').textContent = `Section ${chapterIndex + 1} of ${totalChapters} · ${roundedOverall}%`;
+        }
+
+        function requestProgressUpdate() {
+            if (progressFrame !== null) return;
+            progressFrame = requestAnimationFrame(() => {
+                progressFrame = null;
+                updateReadingProgress();
+            });
+        }
 
         // Restore scroll position when returning to a chapter
         let scrollRestored = false;
@@ -2979,6 +3208,7 @@
                             behavior: 'instant'
                         });
                         scrollRestored = true;
+                        updateReadingProgress();
                     }, 100);
                 } else {
                     scrollRestored = true;
@@ -2992,31 +3222,49 @@
         // Restore scroll position on page load
         window.addEventListener('load', restoreScrollPosition);
 
-        function saveProgress() {
-            const mainContainer = document.getElementById('main');
-            const scrollPercent = mainContainer.scrollTop / (mainContainer.scrollHeight - mainContainer.clientHeight);
-            const clampedScroll = Math.min(1, Math.max(0, scrollPercent || 0));
+        function progressPayload() {
+            return JSON.stringify({
+                chapter_index: chapterIndex,
+                scroll_percent: getScrollPercent(),
+                total_chapters: totalChapters
+            });
+        }
 
-            fetch(`{{ root_path }}/api/books/${bookId}/progress`, {
+        function saveProgress(finalSave = false) {
+            if (!scrollRestored) return;
+            const url = `{{ root_path }}/api/books/${bookId}/progress`;
+            const body = progressPayload();
+            if (finalSave && navigator.sendBeacon) {
+                const sent = navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+                if (sent) return;
+            }
+
+            fetch(url, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chapter_index: chapterIndex,
-                    scroll_percent: clampedScroll,
-                    total_chapters: totalChapters
-                })
-            }).catch(err => console.error('Failed to save progress:', err));
+                body,
+                keepalive: finalSave
+            }).catch(err => {
+                if (!finalSave || !navigator.sendBeacon || !navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }))) {
+                    console.error('Failed to save progress:', err);
+                }
+            });
         }
 
         // Debounce scroll saves
         let progressTimeout = null;
         document.getElementById('main').addEventListener('scroll', () => {
+            requestProgressUpdate();
             if (progressTimeout) clearTimeout(progressTimeout);
             progressTimeout = setTimeout(saveProgress, 1000);
         });
 
-        // Save progress on page unload
-        window.addEventListener('beforeunload', saveProgress);
+        // Persist during lifecycle transitions where beforeunload is unreliable.
+        window.addEventListener('pagehide', () => saveProgress(true));
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') saveProgress(true);
+        });
+        updateReadingProgress();
 
         // Save progress on chapter load (after scroll restoration completes)
         window.addEventListener('load', () => {
