@@ -2,25 +2,25 @@
   "name": "LLMReader",
   "short_name": "LLMReader",
   "description": "Your personal book library",
-  "start_url": "/reader/",
-  "scope": "/reader/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#212529",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/reader/static/icons/icon-192.png",
+      "src": "static/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/reader/static/icons/icon-512.png",
+      "src": "static/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/reader/static/icons/icon-512.png",
+      "src": "static/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

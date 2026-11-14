@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offline Reader</title>
-    <link rel="stylesheet" href="/reader/static/theme.css">
+    <link rel="stylesheet" href="../../static/theme.css">
     <style>
         :root {
             --bg-main: #ffffff;
@@ -68,7 +68,7 @@
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
 
     <div id="sidebar">
-        <a href="/reader/" class="nav-home">← Library</a>
+        <a href="../../" class="nav-home">← Library</a>
         <div class="nav-header" id="bookTitle">Loading...</div>
         <ul class="toc-list" id="tocList"></ul>
     </div>
@@ -86,8 +86,8 @@
         </div>
     </div>
 
-    <script src="/reader/static/offline-db.js"></script>
-    <script src="/reader/static/theme-toggle.js"></script>
+    <script src="../../static/offline-db.js"></script>
+    <script src="../../static/theme-toggle.js"></script>
     <script>
         let currentBookId = null;
         let currentChapterIndex = 0;
@@ -95,7 +95,7 @@
 
         async function init() {
             // Parse URL to get book_id and chapter
-            const match = window.location.pathname.match(/\/reader\/read\/([^/]+)\/(\d+)/);
+            const match = window.location.pathname.match(/\/reader\/read\/([^/]+)\/(\d+)$/);
             if (!match) {
                 showError('Invalid URL');
                 return;
@@ -146,7 +146,7 @@
                         currentChapterIndex = spineIdx;
                         loadChapter(spineIdx);
                         updateNavButtons();
-                        history.pushState(null, '', `/reader/read/${currentBookId}/${spineIdx}`);
+                        history.pushState(null, '', `${window.OfflineDB.base}/read/${currentBookId}/${spineIdx}`);
                     };
                     if (spineIdx === currentChapterIndex) {
                         a.classList.add('active');
@@ -208,7 +208,7 @@
             currentChapterIndex = newIndex;
             loadChapter(newIndex);
             updateNavButtons();
-            history.pushState(null, '', `/reader/read/${currentBookId}/${newIndex}`);
+            history.pushState(null, '', `${window.OfflineDB.base}/read/${currentBookId}/${newIndex}`);
         }
 
         function showError(message) {
@@ -216,7 +216,7 @@
                 <div style="text-align: center; padding: 60px 20px;">
                     <h2 style="color: #dc2626;">Offline Error</h2>
                     <p style="color: var(--text-muted);">${message}</p>
-                    <a href="/reader/" style="color: var(--accent-primary);">← Back to Library</a>
+                    <a href="${window.OfflineDB.base}/" style="color: var(--accent-primary);">← Back to Library</a>
                 </div>
             `;
         }
@@ -227,7 +227,7 @@
 
         // Handle browser back/forward
         window.addEventListener('popstate', () => {
-            const match = window.location.pathname.match(/\/reader\/read\/([^/]+)\/(\d+)/);
+            const match = window.location.pathname.match(/\/reader\/read\/([^/]+)\/(\d+)$/);
             if (match && match[1] === currentBookId) {
                 currentChapterIndex = parseInt(match[2], 10);
                 loadChapter(currentChapterIndex);

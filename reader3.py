@@ -104,6 +104,16 @@ def clean_html_content(soup: BeautifulSoup) -> BeautifulSoup:
     for tag in soup.find_all('input'):
         tag.decompose()
 
+    # Strip inline event handlers and script URLs; book HTML is rendered unescaped.
+    for tag in soup.find_all(True):
+        for attr in list(tag.attrs):
+            value = tag.attrs[attr]
+            if attr.lower().startswith('on'):
+                del tag.attrs[attr]
+            elif attr.lower() in ('href', 'src', 'xlink:href', 'action', 'formaction') and isinstance(value, str) \
+                    and value.strip().lower().replace('\t', '').replace('\n', '').startswith(('javascript:', 'vbscript:', 'data:text/html')):
+                del tag.attrs[attr]
+
     return soup
 
 

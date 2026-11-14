@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import pickle
+import re
 import shutil
 import json
 import uuid
@@ -14,11 +15,14 @@ from functools import lru_cache
 from typing import Optional, Dict, List, Any
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, FileResponse, Response, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
+from starlette._utils import get_route_path
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 from reader3 import (
@@ -32,9 +36,38 @@ from reader3 import (
     save_to_pickle,
 )
 
+# --- URL Prefix Configuration ---
+# Optional secret path segment, e.g. LLMREADER_URL_PREFIX=3f9a1c0e7b2d4a56 serves the
+# app at /3f9a1c0e7b2d4a56/reader/ and returns 404 for everything else.
+LEGACY_BASE_PATH = "/reader"
+URL_PREFIX = os.environ.get("LLMREADER_URL_PREFIX", "").strip().strip("/")
+BASE_PATH = f"/{URL_PREFIX}{LEGACY_BASE_PATH}" if URL_PREFIX else LEGACY_BASE_PATH
+
 # --- Authentication Configuration ---
+SECRET_KEY_FILE = ".llmreader_secret"
+
+
+def _load_secret_key() -> str:
+    """Use LLMREADER_SECRET_KEY, else a key persisted on disk so restarts keep sessions."""
+    key = os.environ.get("LLMREADER_SECRET_KEY", "").strip()
+    if key:
+        return key
+    try:
+        with open(SECRET_KEY_FILE, "r", encoding="utf-8") as f:
+            key = f.read().strip()
+        if key:
+            return key
+    except FileNotFoundError:
+        pass
+    key = secrets.token_hex(32)
+    fd = os.open(SECRET_KEY_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(key)
+    return key
+
+
 AUTH_PASSWORD = os.environ.get("LLMREADER_PASSWORD")
-SECRET_KEY = os.environ.get("LLMREADER_SECRET_KEY", secrets.token_hex(32))
+SECRET_KEY = _load_secret_key()
 COOKIE_NAME = "llmreader_auth"
 SESSION_DURATION = 30 * 24 * 60 * 60  # 30 days in seconds
 
@@ -130,14 +163,73 @@ def is_https(request: Request) -> bool:
     return request.url.scheme == "https"
 
 
-app = FastAPI(root_path="/reader")
+def _is_under(path: str, base: str) -> bool:
+    return path == base or path.startswith(base + "/")
+
+
+class PathPrefixMiddleware:
+    """
+    Mount the app under BASE_PATH.
+
+    With a secret URL_PREFIX, anything outside BASE_PATH is a bare 404 so the app
+    can't be discovered. Signed-in users hitting old /reader/... links (bookmarks,
+    installed PWAs) are redirected to the prefixed URL.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
+
+        path = scope["path"]
+        if path == BASE_PATH:
+            await RedirectResponse(url=BASE_PATH + "/", status_code=307)(scope, receive, send)
+            return
+        if _is_under(path, BASE_PATH):
+            await self.app(dict(scope, root_path=BASE_PATH), receive, send)
+            return
+        if not URL_PREFIX:
+            # No secret prefix: keep serving bare paths (local dev and tests).
+            await self.app(scope, receive, send)
+            return
+
+        if path == "/robots.txt":
+            response = Response("User-agent: *\nDisallow: /\n", media_type="text/plain")
+        elif _is_under(path, LEGACY_BASE_PATH) and verify_cookie(Request(scope).cookies.get(COOKIE_NAME)):
+            target = BASE_PATH + path[len(LEGACY_BASE_PATH):]
+            if scope.get("query_string"):
+                target += "?" + scope["query_string"].decode("latin-1")
+            response = RedirectResponse(url=target, status_code=307)
+        else:
+            response = Response("Not Found", status_code=404, media_type="text/plain")
+        await response(scope, receive, send)
+
+
+app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Add root_path to all templates
-templates.env.globals['root_path'] = "/reader"
+
+
+def _compute_asset_version() -> str:
+    """Fingerprint static files so browsers/CDN refetch them after a deploy."""
+    import hashlib
+    digest = hashlib.sha1()
+    for path in sorted(Path("static").rglob("*")):
+        if path.is_file():
+            stat = path.stat()
+            digest.update(f"{path}:{stat.st_size}:{stat.st_mtime_ns}".encode())
+    return digest.hexdigest()[:10]
+
+
+# Add root_path and the static asset fingerprint to all templates
+templates.env.globals['root_path'] = BASE_PATH
+templates.env.globals['asset_version'] = _compute_asset_version()
 
 
 # --- Service Worker Route (needs special scope header) ---
@@ -154,7 +246,7 @@ async def serve_service_worker():
     return Response(
         content=content,
         media_type="application/javascript",
-        headers={"Service-Worker-Allowed": "/reader/"}
+        headers={"Service-Worker-Allowed": BASE_PATH + "/", "Cache-Control": "no-cache"}
     )
 
 
@@ -176,45 +268,42 @@ async def serve_favicon():
     return FileResponse(icon_path, media_type="image/png")
 
 
+@app.get("/robots.txt")
+async def serve_robots():
+    """Keep the reader out of search indexes."""
+    return Response("User-agent: *\nDisallow: /\n", media_type="text/plain")
+
+
 # --- Authentication Middleware ---
+PUBLIC_PATHS = {"/login", "/sw.js", "/manifest.json", "/favicon.ico", "/robots.txt"}
+
+
+def is_public_path(route_path: str) -> bool:
+    if route_path in PUBLIC_PATHS or route_path.startswith("/static/"):
+        return True
+    # Book images are referenced from offline copies and cached by the service worker.
+    parts = route_path.split("/")
+    return len(parts) > 4 and parts[1] == "read" and parts[3] == "images"
+
+
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    """Protect all routes except /login and /static."""
-    path = request.url.path
+    """Protect all routes except login, static assets, and book images."""
+    if not is_public_path(get_route_path(request.scope)):
+        if not verify_cookie(request.cookies.get(COOKIE_NAME)):
+            next_url = request.url.path
+            if request.url.query:
+                next_url += "?" + request.url.query
+            return RedirectResponse(
+                url=f"{BASE_PATH}/login?next={quote(next_url, safe='/')}",
+                status_code=302,
+            )
 
-    # Allow login route (both GET and POST)
-    if path == "/login" or path == "/reader/login":
-        return await call_next(request)
-
-    # Allow static files (CSS, JS, etc.)
-    if path.startswith("/static/") or path.startswith("/reader/static/"):
-        return await call_next(request)
-
-    # Allow Service Worker and manifest
-    if path == "/sw.js" or path == "/reader/sw.js":
-        return await call_next(request)
-    if path == "/manifest.json" or path == "/reader/manifest.json":
-        return await call_next(request)
-    if path == "/favicon.ico" or path == "/reader/favicon.ico":
-        return await call_next(request)
-
-    # Allow book images (served from /read/{book_id}/images/ or /reader/read/{book_id}/images/)
-    if "/images/" in path and ("/read/" in path):
-        return await call_next(request)
-
-    # Check auth cookie
-    cookie = request.cookies.get(COOKIE_NAME)
-    if not verify_cookie(cookie):
-        # Redirect to login with the original URL as 'next' parameter
-        next_url = request.url.path
-        if request.url.query:
-            next_url += "?" + request.url.query
-        return RedirectResponse(
-            url=f"/reader/login?next={next_url}",
-            status_code=302
-        )
-
-    return await call_next(request)
+    response = await call_next(request)
+    # The URL itself is a secret: never leak it to other sites or search engines.
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    response.headers.setdefault("X-Robots-Tag", "noindex, nofollow")
+    return response
 
 
 # Where are the book folders located?
@@ -225,6 +314,12 @@ HIGHLIGHTS_FILE = "highlights.json"
 
 # Reading progress storage
 PROGRESS_FILE = "reading_progress.json"
+
+# Most recently read, unfinished books shown on top of the library
+CONTINUE_READING_LIMIT = 4
+
+# Search response cap (common words otherwise produce MB-sized payloads)
+MAX_SEARCH_SNIPPETS = 500
 
 # Highlight tag limits
 MAX_HIGHLIGHT_TAGS = 12
@@ -393,13 +488,15 @@ def export_to_obsidian_markdown(filter_book_id: str = "") -> str:
     Returns markdown string.
     """
     highlights = load_highlights()
+    if filter_book_id:
+        highlights = {filter_book_id: highlights[filter_book_id]} if filter_book_id in highlights else {}
 
     if not highlights:
         return "# Reading Highlights\n\nNo highlights yet."
 
     lines = ["# Reading Highlights\n"]
 
-    book_ids = [filter_book_id] if filter_book_id and filter_book_id in highlights else sorted(highlights.keys())
+    book_ids = sorted(highlights.keys())
     for book_id in book_ids:
         book_data = highlights[book_id]
         book_highlights = [
@@ -428,8 +525,8 @@ def export_to_obsidian_markdown(filter_book_id: str = "") -> str:
             chapter_highlights = by_chapter[ch_idx]
 
             # Get chapter title
-            if book and ch_idx < len(book.spine):
-                chapter_title = book.spine[ch_idx].title
+            if book and 0 <= ch_idx < len(book.spine):
+                chapter_title = get_book_derived(book_id, book)["titles"][ch_idx]
             else:
                 chapter_title = f"Chapter {ch_idx + 1}"
 
@@ -498,10 +595,59 @@ def load_book_cached(folder_name: str) -> Optional[Book]:
         return None
 
 
+# Derived per-book data, keyed by folder -> ((id(book), len(spine)), data). Holds no
+# reference to the Book so LRU-evicted books can be freed.
+_BOOK_DERIVED: Dict[str, tuple] = {}
+
+
+def get_book_derived(book_id: str, book: Book) -> Dict[str, Any]:
+    """
+    Per-section display titles (from the TOC, which is author-curated, instead of
+    "Section N" placeholders) and text-length weights for honest progress %.
+    """
+    key = (id(book), len(book.spine))
+    cached = _BOOK_DERIVED.get(book_id)
+    if cached and cached[0] == key:
+        return cached[1]
+
+    toc_titles: Dict[str, str] = {}
+
+    def walk(entries):
+        for entry in entries:
+            title = (entry.title or "").strip()
+            for key in (entry.file_href, os.path.basename(entry.file_href or "")):
+                if title and key and key not in toc_titles:
+                    toc_titles[key] = title
+            walk(entry.children or [])
+
+    walk(book.toc)
+    titles = []
+    for idx, chapter in enumerate(book.spine):
+        title = toc_titles.get(chapter.href) or toc_titles.get(os.path.basename(chapter.href))
+        titles.append(title or chapter.title or f"Section {idx + 1}")
+
+    # Floor each weight so image-only sections still count for something.
+    weights = [max(len(chapter.text or ""), 200) for chapter in book.spine]
+    data = {"titles": titles, "weights": weights, "total_weight": sum(weights) or 1}
+    _BOOK_DERIVED[book_id] = (key, data)
+    return data
+
+
+def compute_percent_complete(book_id: str, chapter_index: int, scroll_percent: float, total_chapters: int) -> float:
+    """Overall progress weighted by section length, falling back to equal sections."""
+    book = load_book_cached(book_id)
+    if book and 0 <= chapter_index < len(book.spine):
+        derived = get_book_derived(book_id, book)
+        weights = derived["weights"]
+        done = sum(weights[:chapter_index]) + scroll_percent * weights[chapter_index]
+        return done / derived["total_weight"] * 100
+    return (chapter_index + scroll_percent) / max(total_chapters, 1) * 100
+
+
 # --- Authentication Routes ---
 
 @app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, next: str = "/", error: Optional[str] = None):
+async def login_page(request: Request, next: str = "", error: Optional[str] = None):
     """Render the login page."""
     return templates.TemplateResponse(request, "login.html", {
         "next": next,
@@ -513,7 +659,7 @@ async def login_page(request: Request, next: str = "/", error: Optional[str] = N
 async def login_submit(
     request: Request,
     password: str = Form(...),
-    next: str = Form("/")
+    next: str = Form("")
 ):
     """Handle login form submission."""
     client_ip = get_client_ip(request)
@@ -534,8 +680,8 @@ async def login_submit(
         }, status_code=401)
 
     # Create response with redirect
-    # Ensure next URL is safe (relative path only)
-    safe_next = next if next.startswith("/") else "/"
+    # Only redirect back into the app (blocks open redirects like //evil.com)
+    safe_next = next if _is_under(next.split("?")[0], BASE_PATH) else BASE_PATH + "/"
     response = RedirectResponse(url=safe_next, status_code=302)
 
     # Set secure cookie
@@ -554,7 +700,7 @@ async def login_submit(
 @app.get("/logout")
 async def logout(request: Request):
     """Log out by clearing the auth cookie."""
-    response = RedirectResponse(url="/reader/login", status_code=302)
+    response = RedirectResponse(url=f"{BASE_PATH}/login", status_code=302)
     response.delete_cookie(key=COOKIE_NAME)
     return response
 
@@ -576,6 +722,49 @@ def find_cover_image(book, book_id: str) -> str | None:
     return None
 
 
+# Library summaries keyed by folder -> (book.pkl mtime, summary). Lets the library
+# page skip unpickling every book, which also evicted the book being read from
+# load_book_cached's LRU on each library visit.
+_BOOK_SUMMARIES: Dict[str, tuple] = {}
+
+
+def list_book_folders() -> List[str]:
+    if not os.path.exists(BOOKS_DIR):
+        return []
+    return [
+        item for item in os.listdir(BOOKS_DIR)
+        if item.endswith("_data") and os.path.isfile(os.path.join(BOOKS_DIR, item, "book.pkl"))
+    ]
+
+
+def get_book_summary(folder_name: str) -> Optional[Dict[str, Any]]:
+    """Return lightweight, mtime-invalidated metadata for the library grid."""
+    try:
+        mtime = os.path.getmtime(os.path.join(BOOKS_DIR, folder_name, "book.pkl"))
+    except OSError:
+        _BOOK_SUMMARIES.pop(folder_name, None)
+        return None
+
+    cached = _BOOK_SUMMARIES.get(folder_name)
+    if cached and cached[0] == mtime:
+        return cached[1]
+
+    book = load_book_cached(folder_name)
+    if not book:
+        return None
+    summary = {
+        "title": book.metadata.title,
+        "author": ", ".join(book.metadata.authors),
+        "chapters": len(book.spine),
+        "tags": list(getattr(book.metadata, 'tags', [])),
+        "cover_image": find_cover_image(book, folder_name),
+        "processed_at": getattr(book, 'processed_at', '2000-01-01'),
+    }
+    # Re-read mtime: load_book_cached may have rewritten a migrated pickle.
+    _BOOK_SUMMARIES[folder_name] = (os.path.getmtime(os.path.join(BOOKS_DIR, folder_name, "book.pkl")), summary)
+    return summary
+
+
 @app.get("/", response_class=HTMLResponse)
 async def library_view(request: Request):
     """Lists all available processed books."""
@@ -583,43 +772,40 @@ async def library_view(request: Request):
     all_tags = set()
     progress_data = load_progress()
 
-    # Scan directory for folders ending in '_data' that have a book.pkl
-    if os.path.exists(BOOKS_DIR):
-        for item in os.listdir(BOOKS_DIR):
-            item_path = os.path.join(BOOKS_DIR, item)
-            if item.endswith("_data") and os.path.isdir(item_path):
-                # Try to load it to get the title
-                book = load_book_cached(item)
-                if book:
-                    tags = getattr(book.metadata, 'tags', [])
-                    all_tags.update(tags)
-                    cover_image = find_cover_image(book, item)
-                    book_progress = progress_data.get(item, {})
-                    books.append({
-                        "id": item,
-                        "title": book.metadata.title,
-                        "author": ", ".join(book.metadata.authors),
-                        "chapters": len(book.spine),
-                        "tags": tags,
-                        "cover_image": cover_image,
-                        "processed_at": getattr(book, 'processed_at', '2000-01-01'),
-                        "progress": book_progress.get("percent_complete", 0),
-                        "last_chapter": book_progress.get("chapter_index", 0),
-                        "completed": book_progress.get("completed", False)
-                    })
+    for item in list_book_folders():
+        summary = get_book_summary(item)
+        if not summary:
+            continue
+        all_tags.update(summary["tags"])
+        book_progress = progress_data.get(item, {})
+        books.append({
+            "id": item,
+            **summary,
+            "progress": book_progress.get("percent_complete", 0),
+            "last_chapter": book_progress.get("chapter_index", 0),
+            "completed": book_progress.get("completed", False),
+            "last_read": book_progress.get("updated_at", ""),
+        })
 
     # Sort books by processed_at descending (newest first)
     books.sort(key=lambda b: b['processed_at'], reverse=True)
 
+    continue_reading = sorted(
+        (b for b in books if b["last_read"] and not b["completed"] and b["progress"] > 0),
+        key=lambda b: b["last_read"],
+        reverse=True,
+    )[:CONTINUE_READING_LIMIT]
+
     return templates.TemplateResponse(request, "library.html", {
         "books": books,
+        "continue_reading": continue_reading,
         "all_tags": sorted(all_tags)
     })
 
 @app.get("/read/{book_id}", response_class=HTMLResponse)
 async def redirect_to_first_chapter(book_id: str):
     """Helper to just go to chapter 0."""
-    return RedirectResponse(url=f"/read/{book_id}/0", status_code=302)
+    return RedirectResponse(url=f"{BASE_PATH}/read/{book_id}/0", status_code=302)
 
 
 @app.get("/read/{book_id}/images/{image_name:path}")
@@ -638,7 +824,8 @@ async def serve_image(book_id: str, image_name: str):
     if not os.path.exists(img_path):
         raise HTTPException(status_code=404, detail="Image not found")
 
-    return FileResponse(img_path)
+    # Book images never change after import.
+    return FileResponse(img_path, headers={"Cache-Control": "private, max-age=2592000, immutable"})
 
 
 @app.get("/read/{book_id}/{chapter_ref:path}", response_class=HTMLResponse)
@@ -674,7 +861,7 @@ async def read_chapter(request: Request, book_id: str, chapter_ref: str):
             raise HTTPException(status_code=404, detail=f"Chapter '{chapter_ref}' not found")
 
         # Redirect to canonical URL with index (preserving anchor if present)
-        redirect_url = f"/read/{book_id}/{chapter_index}"
+        redirect_url = f"{BASE_PATH}/read/{book_id}/{chapter_index}"
         if anchor:
             redirect_url += f"#{anchor}"
         return RedirectResponse(url=redirect_url, status_code=302)
@@ -688,14 +875,37 @@ async def read_chapter(request: Request, book_id: str, chapter_ref: str):
     prev_idx = chapter_index - 1 if chapter_index > 0 else None
     next_idx = chapter_index + 1 if chapter_index < len(book.spine) - 1 else None
 
+    derived = get_book_derived(book_id, book)
+
     return templates.TemplateResponse(request, "reader.html", {
         "book": book,
         "current_chapter": current_chapter,
+        "chapter_html": lazy_load_sized_images(current_chapter.content),
+        "section_title": derived["titles"][chapter_index],
+        "section_weights": derived["weights"],
         "chapter_index": chapter_index,
         "book_id": book_id,
         "prev_idx": prev_idx,
         "next_idx": next_idx
     })
+
+_IMG_TAG_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+
+
+def lazy_load_sized_images(html: str) -> str:
+    """
+    Lazy-load images that declare width and height. Unsized images stay eager so
+    their late layout doesn't shift restored scroll positions or anchors.
+    """
+    def add_lazy(match: "re.Match[str]") -> str:
+        tag = match.group(0)
+        lowered = tag.lower()
+        if "loading=" in lowered or "width=" not in lowered or "height=" not in lowered:
+            return tag
+        return tag[:4] + ' loading="lazy" decoding="async"' + tag[4:]
+
+    return _IMG_TAG_RE.sub(add_lazy, html)
+
 
 @app.post("/upload")
 async def upload_epub(file: UploadFile = File(...)):
@@ -726,11 +936,11 @@ async def upload_epub(file: UploadFile = File(...)):
                     break
                 buffer.write(chunk)
 
-        if ext == ".pdf":
-            book_obj = process_pdf(temp_path, out_dir)
-        else:
-            book_obj = process_epub(temp_path, out_dir)
-        save_to_pickle(book_obj, out_dir)
+        # Parsing (and PDF figure rendering) is slow CPU work; keep it off the
+        # event loop so other readers aren't frozen during an import.
+        processor = process_pdf if ext == ".pdf" else process_epub
+        book_obj = await run_in_threadpool(processor, temp_path, out_dir)
+        await run_in_threadpool(save_to_pickle, book_obj, out_dir)
         # Clear cache so subsequent requests pick up the new book list immediately.
         load_book_cached.cache_clear()
     except Exception as e:
@@ -757,13 +967,10 @@ async def get_all_tags():
     Returns a list of all unique tags across all books in the library.
     """
     tags = set()
-    if os.path.exists(BOOKS_DIR):
-        for item in os.listdir(BOOKS_DIR):
-            item_path = os.path.join(BOOKS_DIR, item)
-            if item.endswith("_data") and os.path.isdir(item_path):
-                book = load_book_cached(item)
-                if book and hasattr(book.metadata, 'tags'):
-                    tags.update(book.metadata.tags)
+    for item in list_book_folders():
+        summary = get_book_summary(item)
+        if summary:
+            tags.update(summary["tags"])
 
     return {"tags": sorted(tags)}
 
@@ -850,12 +1057,19 @@ async def update_book_progress(book_id: str, request: Request):
     """
     try:
         body = await request.json()
-        chapter_index = body.get("chapter_index", 0)
-        scroll_percent = body.get("scroll_percent", 0)
-        total_chapters = body.get("total_chapters", 1)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="Expected a JSON object")
+    try:
+        chapter_index = max(0, int(body.get("chapter_index", 0)))
+        scroll_percent = min(1.0, max(0.0, float(body.get("scroll_percent", 0))))
+        total_chapters = max(1, int(body.get("total_chapters", 1)))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="chapter_index, scroll_percent and total_chapters must be numbers")
 
-        # Calculate overall progress: (chapter + scroll within chapter) / total chapters
-        percent_complete = ((chapter_index + scroll_percent) / total_chapters) * 100
+    try:
+        percent_complete = compute_percent_complete(book_id, chapter_index, scroll_percent, total_chapters)
         percent_complete = min(100, max(0, percent_complete))
 
         progress = load_progress()
@@ -973,7 +1187,7 @@ async def get_offline_package(book_id: str):
     images = []
     for original_path, local_filename in book.images.items():
         images.append({
-            "path": f"/reader/read/{book_id}/images/{local_filename}",
+            "path": f"{BASE_PATH}/read/{book_id}/images/{local_filename}",
             "original": original_path,
         })
 
@@ -1018,7 +1232,9 @@ async def search_book(book_id: str, q: str = ""):
     query_lower = q.lower()
     results = []
     total = 0
+    snippets_left = MAX_SEARCH_SNIPPETS
     context_radius = 60
+    titles = get_book_derived(book_id, book)["titles"]
 
     for idx, chapter in enumerate(book.spine):
         text = chapter.text or ""
@@ -1026,10 +1242,16 @@ async def search_book(book_id: str, q: str = ""):
         chapter_matches = []
         search_start = 0
 
+        chapter_count = 0
         while True:
             pos = text_lower.find(query_lower, search_start)
             if pos == -1:
                 break
+            chapter_count += 1
+            search_start = pos + len(q)
+            if snippets_left <= 0:
+                continue  # keep counting, stop building snippets
+            snippets_left -= 1
             # Extract context snippet
             start = max(0, pos - context_radius)
             end = min(len(text), pos + len(q) + context_radius)
@@ -1042,18 +1264,17 @@ async def search_book(book_id: str, q: str = ""):
                 "match_start": pos - start + len(prefix),
                 "match_len": len(q),
             })
-            search_start = pos + len(q)
 
+        total += chapter_count
         if chapter_matches:
-            total += len(chapter_matches)
             results.append({
                 "chapter_index": idx,
-                "chapter_title": chapter.title or f"Section {idx + 1}",
+                "chapter_title": titles[idx],
                 "matches": chapter_matches,
-                "count": len(chapter_matches),
+                "count": chapter_count,
             })
 
-    return {"results": results, "total": total, "query": q}
+    return {"results": results, "total": total, "query": q, "truncated": snippets_left <= 0 and total > MAX_SEARCH_SNIPPETS}
 
 
 @app.get("/api/highlights")
@@ -1139,17 +1360,25 @@ async def update_highlight(highlight_id: str, request: Request):
     Update a highlight (e.g., add or edit note).
     Expected JSON body: {"note": "my annotation"}
     """
-    book_id, highlight, idx = get_highlight_by_id(highlight_id)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
 
-    if not highlight:
+    # Locate the highlight in the same snapshot we write back.
+    highlights = load_highlights()
+    book_id, idx = None, None
+    for candidate_book, book_data in highlights.items():
+        for i, hl in enumerate(book_data.get("highlights", [])):
+            if hl.get("id") == highlight_id:
+                book_id, idx = candidate_book, i
+                break
+        if book_id is not None:
+            break
+    if book_id is None:
         raise HTTPException(status_code=404, detail="Highlight not found")
 
     try:
-        body = await request.json()
-
-        # Load highlights
-        highlights = load_highlights()
-
         # Update note
         if "note" in body:
             highlights[book_id]["highlights"][idx]["note"] = body["note"]
@@ -1338,11 +1567,12 @@ async def export_highlights_markdown(book_id: str = ""):
     else:
         filename = f"highlights-{datetime.now().strftime('%Y%m%d')}.md"
 
+    ascii_name = filename.encode("ascii", "ignore").decode() or "highlights.md"
     return Response(
         content=markdown_content,
         media_type="text/markdown",
         headers={
-            "Content-Disposition": f"attachment; filename={filename}"
+            "Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}"
         }
     )
 
@@ -1382,7 +1612,8 @@ async def highlights_page(request: Request):
         # Build chapter list with highlights
         chapters = []
         for ch_idx in sorted(by_chapter.keys()):
-            chapter_title = book.spine[ch_idx].title if ch_idx < len(book.spine) else f"Chapter {ch_idx + 1}"
+            titles = get_book_derived(book_id, book)["titles"]
+            chapter_title = titles[ch_idx] if 0 <= ch_idx < len(titles) else f"Chapter {ch_idx + 1}"
             chapters.append({
                 "index": ch_idx,
                 "title": chapter_title,
@@ -1403,7 +1634,11 @@ async def highlights_page(request: Request):
     })
 
 
+# Outermost middleware: resolves BASE_PATH before auth runs.
+app.add_middleware(PathPrefixMiddleware)
+
+
 if __name__ == "__main__":
     import uvicorn
-    print("Starting server at http://127.0.0.1:8123")
+    print(f"Starting server at http://127.0.0.1:8123{BASE_PATH}/")
     uvicorn.run(app, host="127.0.0.1", port=8123)
