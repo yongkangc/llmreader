@@ -27,3 +27,4 @@ tunnel.log
 # User data
 highlights.json
 reading_progress.json
+.llmreader_secret

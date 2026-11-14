@@ -14,6 +14,14 @@ from fastapi.testclient import TestClient
 import server
 
 
+def reader_source() -> str:
+    """Reader markup plus the page script it loads."""
+    return "\n".join(
+        (PROJECT_ROOT / rel).read_text(encoding="utf-8")
+        for rel in ("templates/reader.html", "static/reader-page.js")
+    )
+
+
 def test_progress_endpoint_accepts_beacon_post_and_regular_put():
     progress_methods = set().union(*(
         route.methods
@@ -25,7 +33,7 @@ def test_progress_endpoint_accepts_beacon_post_and_regular_put():
 
 
 def test_reader_template_contains_accessible_live_progress():
-    template = (PROJECT_ROOT / "templates" / "reader.html").read_text(encoding="utf-8")
+    template = reader_source()
 
     assert 'role="progressbar"' in template
     assert 'aria-valuetext' in template
@@ -34,7 +42,7 @@ def test_reader_template_contains_accessible_live_progress():
 
 
 def test_reader_template_keeps_non_scrollable_sections_at_zero_progress():
-    template = (PROJECT_ROOT / "templates" / "reader.html").read_text(encoding="utf-8")
+    template = reader_source()
 
     assert "return scrollableHeight > 0 ? Math.min(1, Math.max(0, mainContainer.scrollTop / scrollableHeight)) : 0;" in template
 
@@ -55,7 +63,7 @@ def test_short_one_section_initial_progress_stays_incomplete(tmp_path, monkeypat
 
 
 def test_reader_preset_groups_have_accessible_names():
-    template = (PROJECT_ROOT / "templates" / "reader.html").read_text(encoding="utf-8")
+    template = reader_source()
 
     assert 'id="measureOptions" role="group" aria-label="Text width"' in template
     assert 'id="lineHeightOptions" role="group" aria-label="Line spacing"' in template
@@ -63,17 +71,17 @@ def test_reader_preset_groups_have_accessible_names():
 
 
 def test_reader_template_keeps_fresh_font_size_at_default():
-    template = (PROJECT_ROOT / "templates" / "reader.html").read_text(encoding="utf-8")
+    template = reader_source()
 
     assert "fontSize: 18" in template
     assert "value === null || value === undefined || value === ''" in template
 
 
 def test_reader_template_keeps_theme_and_progress_state_isolated():
-    template = (PROJECT_ROOT / "templates" / "reader.html").read_text(encoding="utf-8")
+    template = reader_source()
 
     assert "window.matchMedia('(prefers-color-scheme: dark)')" not in template
     assert "localStorage.setItem('theme', readerSettings.theme)" not in template
     assert "if (!scrollRestored) return;" in template
     assert "main.toggleAttribute('inert', isMobileOpen)" in template
-    assert "queueMicrotask(() =>" in template
+    assert "queueMicrotask(() =>" not in template

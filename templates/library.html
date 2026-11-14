@@ -9,8 +9,8 @@
     <link rel="manifest" href="{{ root_path }}/manifest.json">
     <link rel="apple-touch-icon" href="{{ root_path }}/static/icons/icon-192.png">
     <title>My Library</title>
-    <link rel="stylesheet" href="{{ root_path }}/static/theme.css">
-    <link rel="stylesheet" href="{{ root_path }}/static/app.css">
+    <link rel="stylesheet" href="{{ root_path }}/static/theme.css?v={{ asset_version }}">
+    <link rel="stylesheet" href="{{ root_path }}/static/app.css?v={{ asset_version }}">
     <style>
         .container {
             max-width: 1100px;
@@ -501,8 +501,31 @@
             border-color: var(--accent-primary);
         }
 
+        .book-progress-label {
+            margin-top: 2px;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            color: var(--accent-primary);
+            font-variant-numeric: tabular-nums;
+        }
+        .book-completed-checkbox::after {
+            content: '✓';
+            color: white;
+            font-size: 14px;
+            opacity: 0.45;
+        }
+        .book-completed-checkbox:checked::after { opacity: 1; }
+        .book-card:focus-within .book-overlay,
+        .book-card:focus-visible .book-overlay {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
+            .header { flex-wrap: wrap; }
+            .header-actions { flex-wrap: wrap; justify-content: flex-end; }
+            .storage-usage { white-space: nowrap; }
             .container { padding: 24px 16px 60px; }
             .header { margin-bottom: 32px; }
             .header h1 { font-size: 1.5rem; }
@@ -510,10 +533,14 @@
                 grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
                 gap: 16px;
             }
-            /* Always show overlay on touch devices */
+            /* Always show overlay on touch devices, at the top so the progress bar stays visible */
             .book-overlay {
                 opacity: 1;
                 pointer-events: auto;
+                top: 0;
+                bottom: auto;
+                border-radius: 6px 6px 0 0;
+                background: linear-gradient(to bottom, rgba(0,0,0,0.45), transparent);
             }
         }
 
@@ -538,8 +565,8 @@
             50% { opacity: 0.5; }
         }
     </style>
-    <script src="{{ root_path }}/static/theme-toggle.js"></script>
-    <script src="{{ root_path }}/static/offline-db.js"></script>
+    <script src="{{ root_path }}/static/theme-toggle.js?v={{ asset_version }}"></script>
+    <script src="{{ root_path }}/static/offline-db.js?v={{ asset_version }}"></script>
 </head>
 <body class="page-library">
     <div class="container">
@@ -611,9 +638,29 @@
                     <div class="book-meta">
                         <div class="book-title">{{ book.title }}</div>
                         <div class="book-author">{{ book.author }}</div>
+                        {% if book.completed %}
+                        <div class="book-progress-label">Finished</div>
+                        {% elif book.progress > 0 %}
+                        <div class="book-progress-label">{{ book.progress | round | int }}% read</div>
+                        {% endif %}
                     </div>
                 </a>
                 {% endmacro %}
+
+                {% if continue_reading %}
+                <div class="tag-section continue-section" data-tag="continue">
+                    <div class="tag-header" onclick="toggleSection(this)">
+                        <span class="tag-icon">▼</span>
+                        <span class="tag-title">Continue reading</span>
+                        <span class="tag-count">{{ continue_reading|length }}</span>
+                    </div>
+                    <div class="tag-books">
+                        {% for book in continue_reading %}
+                            {{ book_card(book) }}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
 
                 {% for tag in all_tags %}
                     {% if tag in books_by_tag %}

@@ -8,6 +8,8 @@ const DB_NAME = 'llmreader_offline';
 const DB_VERSION = 1;
 const TTL_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
 const MAX_BOOKS = 3;
+// App base path, e.g. "/reader" or "/<secret-prefix>/reader".
+const APP_BASE = (self.location.pathname.match(/^(.*?\/reader)(?=\/|$)/) || [null, '/reader'])[1];
 
 let dbPromise = null;
 
@@ -278,7 +280,7 @@ async function downloadBook(bookId, onProgress) {
     await runCleanup();
 
     // Fetch the offline package
-    const response = await fetch(`/reader/api/books/${bookId}/offline-package`);
+    const response = await fetch(`${APP_BASE}/api/books/${bookId}/offline-package`);
     if (!response.ok) {
         throw new Error(`Failed to fetch offline package: ${response.status}`);
     }
@@ -364,7 +366,7 @@ async function flushOutbox() {
     for (const item of items) {
         try {
             let response;
-            const baseUrl = '/reader';
+            const baseUrl = APP_BASE;
 
             switch (item.type) {
                 case 'highlight_create':
@@ -479,6 +481,7 @@ function formatBytes(bytes) {
 // Export for use in pages and service worker
 if (typeof window !== 'undefined') {
     window.OfflineDB = {
+        base: APP_BASE,
         // Books
         getBook,
         getAllBooks,

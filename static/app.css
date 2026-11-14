@@ -182,7 +182,7 @@ img {
     }
 
     .page-reader .top-actions {
-        top: max(16px, env(safe-area-inset-top));
-        right: max(16px, env(safe-area-inset-right));
+        top: max(var(--toolbar-top, 16px), env(safe-area-inset-top));
+        right: max(var(--toolbar-right, 30px), env(safe-area-inset-right));
     }
 }

@@ -3,13 +3,20 @@
  * Handles: offline navigation, cached chapters, images from IndexedDB
  */
 
-const CACHE_NAME = 'llmreader-v2';
+// The worker is served from {BASE}/sw.js, where BASE may include a secret prefix.
+const BASE = self.location.pathname.replace(/\/sw\.js$/, '');
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const BASE_RE = escapeRegExp(BASE);
+const CHAPTER_RE = new RegExp(`^${BASE_RE}/read/([^/]+)/(\\d+)$`);
+const IMAGE_RE = new RegExp(`^${BASE_RE}/read/([^/]+)/images/`);
+
+const CACHE_NAME = 'llmreader-v3';
 const STATIC_ASSETS = [
-    '/reader/static/offline-db.js',
-    '/reader/static/theme.css',
-    '/reader/static/theme-toggle.js',
-    '/reader/static/offline-shell.html',
-    '/reader/manifest.json',
+    `${BASE}/static/offline-db.js`,
+    `${BASE}/static/theme.css`,
+    `${BASE}/static/theme-toggle.js`,
+    `${BASE}/static/offline-shell.html`,
+    `${BASE}/manifest.json`,
 ];
 
 // Install: cache static assets
@@ -40,20 +47,20 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // Handle navigation requests to /reader/read/{book_id}/{chapter}
-    if (event.request.mode === 'navigate' && url.pathname.match(/^\/reader\/read\/[^/]+\/\d+$/)) {
+    // Handle navigation requests to {BASE}/read/{book_id}/{chapter}
+    if (event.request.mode === 'navigate' && CHAPTER_RE.test(url.pathname)) {
         event.respondWith(handleChapterNavigation(event.request, url));
         return;
     }
 
     // Handle image requests from offline storage
-    if (url.pathname.match(/^\/reader\/read\/[^/]+\/images\//)) {
+    if (IMAGE_RE.test(url.pathname)) {
         event.respondWith(handleImageRequest(event.request, url));
         return;
     }
 
     // Handle static assets (cache-first)
-    if (url.pathname.startsWith('/reader/static/')) {
+    if (url.pathname.startsWith(`${BASE}/static/`)) {
         event.respondWith(
             caches.match(event.request).then((cached) => {
                 return cached || fetch(event.request);
@@ -78,7 +85,7 @@ async function handleChapterNavigation(request, url) {
     }
 
     // Extract book_id and chapter from URL
-    const match = url.pathname.match(/^\/reader\/read\/([^/]+)\/(\d+)$/);
+    const match = url.pathname.match(CHAPTER_RE);
     if (!match) {
         return new Response('Not found', { status: 404 });
     }
@@ -93,7 +100,7 @@ async function handleChapterNavigation(request, url) {
     }
 
     // Return the offline shell with embedded data
-    const shell = await caches.match('/reader/static/offline-shell.html');
+    const shell = await caches.match(`${BASE}/static/offline-shell.html`);
     if (!shell) {
         return new Response('Offline shell not cached', { status: 500 });
     }
@@ -114,7 +121,7 @@ async function handleImageRequest(request, url) {
     }
 
     // Extract book_id from URL
-    const match = url.pathname.match(/^\/reader\/read\/([^/]+)\/images\//);
+    const match = url.pathname.match(IMAGE_RE);
     if (!match) {
         return new Response('Not found', { status: 404 });
     }
