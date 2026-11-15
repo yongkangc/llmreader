@@ -208,7 +208,8 @@ class PathPrefixMiddleware:
         await response(scope, receive, send)
 
 
-app = FastAPI()
+# No auto-generated API docs: they would map every route for anyone signed in.
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 templates = Jinja2Templates(directory="templates")
 
 # Mount static files directory
@@ -315,6 +316,9 @@ HIGHLIGHTS_FILE = "highlights.json"
 # Reading progress storage
 PROGRESS_FILE = "reading_progress.json"
 
+# Library cover thumbnails: ~2x the 190px card width for sharp retina rendering
+COVER_THUMB_WIDTH = 400
+
 # Most recently read, unfinished books shown on top of the library
 CONTINUE_READING_LIMIT = 4
 
@@ -339,14 +343,29 @@ def _sanitize_filename(filename: str, fallback_ext: str) -> str:
 
 # --- Highlights Storage Functions ---
 
+# Parsed highlights keyed by the file's (mtime_ns, size). Callers mutate what
+# they load, so each call gets a private copy (pickle round-trip is ~2x faster
+# than re-parsing the JSON).
+_HIGHLIGHTS_CACHE: Dict[str, Any] = {"key": None, "blob": None}
+
+
+def _file_key(path: str):
+    stat = os.stat(path)
+    return (path, stat.st_mtime_ns, stat.st_size)
+
+
 def load_highlights() -> Dict[str, Any]:
     """Load highlights from JSON file."""
     if not os.path.exists(HIGHLIGHTS_FILE):
         return {}
 
     try:
-        with open(HIGHLIGHTS_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        key = _file_key(HIGHLIGHTS_FILE)
+        if _HIGHLIGHTS_CACHE["key"] != key:
+            with open(HIGHLIGHTS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            _HIGHLIGHTS_CACHE.update(key=key, blob=pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL))
+        return pickle.loads(_HIGHLIGHTS_CACHE["blob"])
     except Exception as e:
         print(f"Error loading highlights: {e}")
         return {}
@@ -355,10 +374,11 @@ def load_highlights() -> Dict[str, Any]:
 def save_highlights(highlights: Dict[str, Any]) -> None:
     """Save highlights to JSON file atomically."""
     try:
-        # Write to temp file first, then rename (atomic)
+        # Write to temp file first, then rename (atomic). Compact JSON: the
+        # pretty-printed form was 3x slower to write on large libraries.
         temp_file = HIGHLIGHTS_FILE + '.tmp'
         with open(temp_file, 'w', encoding='utf-8') as f:
-            json.dump(highlights, f, indent=2, ensure_ascii=False)
+            json.dump(highlights, f, ensure_ascii=False, separators=(",", ":"))
         os.replace(temp_file, HIGHLIGHTS_FILE)
     except Exception as e:
         print(f"Error saving highlights: {e}")
@@ -712,12 +732,12 @@ def find_cover_image(book, book_id: str) -> str | None:
 
     for pattern in cover_patterns:
         if pattern in book.images:
-            return f"/read/{book_id}/images/{book.images[pattern]}"
+            return f"/read/{book_id}/covers/{book.images[pattern]}"
 
     # Also check for keys containing 'cover'
     for key, value in book.images.items():
         if 'cover' in key.lower():
-            return f"/read/{book_id}/images/{value}"
+            return f"/read/{book_id}/covers/{value}"
 
     return None
 
@@ -808,6 +828,49 @@ async def redirect_to_first_chapter(book_id: str):
     return RedirectResponse(url=f"{BASE_PATH}/read/{book_id}/0", status_code=302)
 
 
+def _make_cover_thumbnail(src_path: str, thumb_path: str) -> None:
+    """Write a COVER_THUMB_WIDTH-wide JPEG of src_path (atomic)."""
+    import pymupdf
+
+    pix = pymupdf.Pixmap(src_path)
+    if pix.alpha:
+        pix = pymupdf.Pixmap(pix, 0)  # drop alpha; JPEG has none
+    if pix.colorspace and pix.colorspace.n not in (1, 3):
+        pix = pymupdf.Pixmap(pymupdf.csRGB, pix)  # e.g. CMYK covers
+    if pix.width > COVER_THUMB_WIDTH:
+        height = max(1, round(pix.height * COVER_THUMB_WIDTH / pix.width))
+        pix = pymupdf.Pixmap(pix, COVER_THUMB_WIDTH, height, None)
+    os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
+    tmp_path = thumb_path + ".tmp"
+    with open(tmp_path, "wb") as f:
+        f.write(pix.tobytes("jpeg", jpg_quality=82))
+    os.replace(tmp_path, thumb_path)
+
+
+@app.get("/read/{book_id}/covers/{image_name:path}")
+async def serve_cover_thumbnail(book_id: str, image_name: str):
+    """
+    Library-sized cover (originals can be several MB). Generated once on first
+    request and stored next to the book; falls back to the original image.
+    """
+    safe_book_id = os.path.basename(book_id)
+    safe_image_name = os.path.basename(image_name)
+    src_path = os.path.join(BOOKS_DIR, safe_book_id, "images", safe_image_name)
+    if not os.path.exists(src_path):
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    thumb_path = os.path.join(BOOKS_DIR, safe_book_id, "thumbs", f"{safe_image_name}.{COVER_THUMB_WIDTH}.jpg")
+    if not os.path.exists(thumb_path) or os.path.getmtime(thumb_path) < os.path.getmtime(src_path):
+        try:
+            await run_in_threadpool(_make_cover_thumbnail, src_path, thumb_path)
+        except Exception as e:
+            print(f"Cover thumbnail failed for {src_path}: {e}")
+            return FileResponse(src_path, headers={"Cache-Control": "private, max-age=86400"})
+
+    return FileResponse(thumb_path, media_type="image/jpeg",
+                        headers={"Cache-Control": "private, max-age=2592000, immutable"})
+
+
 @app.get("/read/{book_id}/images/{image_name:path}")
 async def serve_image(book_id: str, image_name: str):
     """
@@ -866,8 +929,11 @@ async def read_chapter(request: Request, book_id: str, chapter_ref: str):
             redirect_url += f"#{anchor}"
         return RedirectResponse(url=redirect_url, status_code=302)
 
-    if chapter_index < 0 or chapter_index >= len(book.spine):
-        raise HTTPException(status_code=404, detail="Chapter not found")
+    if not book.spine:
+        raise HTTPException(status_code=404, detail="Book has no chapters")
+    if chapter_index >= len(book.spine):
+        # Stale link (e.g. a book re-imported with fewer sections): open the last one.
+        return RedirectResponse(url=f"{BASE_PATH}/read/{book_id}/{len(book.spine) - 1}", status_code=302)
 
     current_chapter = book.spine[chapter_index]
 

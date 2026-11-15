@@ -378,9 +378,17 @@ const TtsPlayer = {
      * Called on TTS error
      */
     onError: function(event) {
+        // 'interrupted'/'canceled' are normal when skipping or stopping.
+        const code = event && event.error;
+        if (code === 'interrupted' || code === 'canceled') return;
         console.error('TTS Error:', event);
         this.state.isPlaying = false;
         this.updatePlayPauseButton();
+        if (this.elements.timeDisplay) {
+            this.elements.timeDisplay.textContent = code === 'not-allowed'
+                ? 'Tap play to start'
+                : 'Read-aloud unavailable on this device';
+        }
     },
 
     /**
