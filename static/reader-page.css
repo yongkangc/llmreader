@@ -131,7 +131,7 @@ body.sidebar-collapsed .content-container { max-width: 1040px; }
 .top-actions { position: fixed; top: 16px; right: 30px; display: flex; gap: 4px; align-items: center; z-index: 15; padding: 4px; border-radius: 10px; background: color-mix(in srgb, var(--bg-main) 94%, transparent); box-shadow: 0 1px 6px rgba(0,0,0,0.08); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); transition: transform 0.22s ease, opacity 0.22s ease; }
 .top-actions.toolbar-hidden { transform: translateY(calc(-100% - 24px)); opacity: 0; pointer-events: none; }
 .top-actions:focus-within { transform: none; opacity: 1; pointer-events: auto; }
-.top-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: var(--bg-button); color: var(--text-muted); border: 1px solid transparent; border-radius: var(--radius-sm, 6px); cursor: pointer; font-size: 1em; transition: all 0.2s; text-decoration: none; padding: 0; }
+.top-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: var(--bg-button); color: var(--text-secondary); border: 1px solid transparent; border-radius: var(--radius-sm, 6px); cursor: pointer; font-size: 1em; transition: all 0.2s; text-decoration: none; padding: 0; }
 .top-btn:hover { background: var(--bg-button-hover); color: var(--text-primary); border-color: var(--border-light); }
 .top-btn.copied { background: var(--accent-success); color: white; border-color: var(--accent-success); }
 
@@ -892,7 +892,7 @@ mark.highlight:hover + .inline-note-placeholder,
 
 .reading-progress { position: fixed; left: 0; right: 0; bottom: 0; height: 3px; z-index: 40; background: transparent; pointer-events: none; }
 .reading-progress-fill { width: 0; height: 100%; background: var(--accent-primary); opacity: 0.72; transition: width 0.12s linear; }
-.reading-progress-status { position: fixed; right: 14px; bottom: 10px; z-index: 39; padding: 4px 8px; border-radius: 999px; background: color-mix(in srgb, var(--bg-main) 88%, transparent); color: var(--text-muted); font: 600 0.72rem/1.2 var(--font-sans, -apple-system, sans-serif); opacity: 0.82; pointer-events: none; }
+.reading-progress-status { position: fixed; right: 14px; bottom: 10px; z-index: 39; padding: 4px 8px; border-radius: 999px; background: color-mix(in srgb, var(--bg-main) 88%, transparent); color: var(--text-muted); font: 600 0.72rem/1.2 var(--font-sans, -apple-system, sans-serif); opacity: 1; pointer-events: none; }
 
 @media (max-width: 480px) {
     .reading-progress-status { display: none; }

@@ -45,46 +45,101 @@
         .book-list {
             display: flex;
             flex-direction: column;
-            gap: 40px;
         }
 
+        .tag-section + .tag-section { margin-top: 4px; }
+
+        /* Section row: full-width target, chevron, count pill, cover peek when collapsed */
         .tag-header {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            width: calc(100% + 16px);
+            margin: 0 -8px;
+            padding: 10px 8px;
+            border: 0;
+            border-radius: 10px;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            text-align: left;
             cursor: pointer;
             user-select: none;
-            margin-bottom: 16px;
-            padding: 4px 0;
+            transition: background-color 0.15s ease;
         }
-        .tag-header:hover .tag-title {
-            color: var(--text-primary);
-        }
+        .tag-header:hover { background: var(--bg-card-hover, rgba(0,0,0,0.04)); }
+        .tag-header:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+        .tag-header:hover .tag-title { color: var(--text-primary); }
 
         .tag-icon {
-            font-size: 0.6rem;
-            color: var(--text-muted);
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            color: var(--text-secondary);
             transition: transform 0.2s ease;
-            width: 12px;
         }
-        .tag-section.collapsed .tag-icon {
-            transform: rotate(-90deg);
-        }
+        .tag-section.collapsed .tag-icon { transform: rotate(-90deg); }
 
         .tag-title {
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
-            transition: color 0.2s ease;
+            font-size: 0.875rem;
+            font-weight: 650;
+            letter-spacing: 0.01em;
+            color: var(--text-secondary);
+            text-transform: capitalize;
+            white-space: nowrap;
+            transition: color 0.15s ease;
         }
 
         .tag-count {
-            font-size: 0.7rem;
+            min-width: 22px;
+            padding: 1px 7px;
+            border-radius: 999px;
+            background: var(--border-subtle, rgba(0,0,0,0.06));
             color: var(--text-muted);
-            opacity: 0.6;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
         }
+
+        .tag-rule {
+            flex: 1;
+            height: 1px;
+            background: var(--border-medium, rgba(0,0,0,0.1));
+            opacity: 0.7;
+        }
+
+        /* Mini cover stack, only when collapsed, so you can see what's inside */
+        .tag-peek { display: none; align-items: center; padding-left: 4px; }
+        .tag-section.collapsed .tag-peek { display: inline-flex; }
+        .tag-peek img, .tag-peek-fallback {
+            width: 18px;
+            height: 26px;
+            border-radius: 3px;
+            object-fit: cover;
+            box-shadow: 0 0 0 2px var(--bg-main, #fff), 0 1px 3px rgba(0,0,0,0.2);
+            background: var(--border-subtle, #ddd);
+        }
+        .tag-peek > * + * { margin-left: -6px; }
+        .tag-peek-fallback {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        /* Animated expand/collapse (grid 0fr -> 1fr) */
+        .tag-body {
+            display: grid;
+            grid-template-rows: 1fr;
+        }
+        /* Animate only after saved state is restored, so page load doesn't animate */
+        .book-list.ready .tag-body { transition: grid-template-rows 0.25s ease; }
+        .tag-body > .tag-books { min-height: 0; overflow: hidden; padding-top: 12px; padding-bottom: 28px; }
+        .tag-section.collapsed .tag-body { grid-template-rows: 0fr; }
+        .tag-section.collapsed .tag-body > .tag-books { padding-top: 0; padding-bottom: 0; visibility: hidden; }
 
         .tag-books {
             display: grid;
@@ -93,8 +148,9 @@
             content-visibility: auto;
             contain-intrinsic-size: auto 300px;
         }
-        .tag-section.collapsed .tag-books {
-            display: none;
+
+        @media (prefers-reduced-motion: reduce) {
+            .tag-body, .tag-icon { transition: none; }
         }
 
         /* Book Card — cover-first vertical layout */
@@ -576,6 +632,7 @@
                 <span class="storage-usage" id="storageUsage" title="Offline storage usage" onclick="showStorageDetails()">--</span>
                 <span class="offline-status" id="offlineStatus">●</span>
                 <a href="{{ root_path }}/highlights" class="btn btn-secondary" style="font-size:0.8125rem;">Highlights</a>
+                <a href="{{ root_path }}/logout" class="btn btn-ghost" style="font-size:0.8125rem;" title="Log out">Log out</a>
                 <button class="btn btn-ghost" id="themeToggle" onclick="toggleDarkMode()" title="Toggle dark mode">
                     <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" id="themeIcon">
                         <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"></path>
@@ -609,7 +666,7 @@
 
             <div class="book-list">
                 {% macro book_card(book) %}
-                <a href="{{ root_path }}/read/{{ book.id }}/{{ book.last_chapter }}" class="book-card">
+                <a href="{{ root_path }}/read/{{ book.id }}/{{ book.last_chapter }}" class="book-card" aria-label="{{ book.title }}{% if book.author %} by {{ book.author }}{% endif %}{% if book.completed %}, finished{% elif book.progress > 0 %}, {{ book.progress | round | int }}% read{% endif %}">
                     <div class="book-cover">
                         {% if book.cover_image %}
                             <img class="book-cover-img" src="{{ root_path }}{{ book.cover_image }}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
@@ -623,13 +680,13 @@
                         </div>
                         {% endif %}
                         <div class="book-overlay" onclick="event.stopPropagation(); event.preventDefault();">
-                            <button class="overlay-btn book-offline-btn" data-book-id="{{ book.id }}" onclick="event.stopPropagation(); event.preventDefault(); toggleOfflineDownload('{{ book.id }}', this)" title="Download for offline">
+                            <button class="overlay-btn book-offline-btn" data-book-id="{{ book.id }}" onclick="event.stopPropagation(); event.preventDefault(); toggleOfflineDownload('{{ book.id }}', this)" title="Download for offline" aria-label="Download for offline">
                                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
                             </button>
-                            <button class="overlay-btn" onclick="event.stopPropagation(); event.preventDefault(); openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title | replace("'", "\\'") }}')" title="Edit tags">
+                            <button class="overlay-btn" onclick="event.stopPropagation(); event.preventDefault(); openTagEditor('{{ book.id }}', '{{ ','.join(book.tags) }}', '{{ book.title | replace("'", "\\'") }}')" title="Edit tags" aria-label="Edit tags">
                                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2v4.586l7 7L14.586 9l-7-7H3zM2 2a1 1 0 0 1 1-1h4.586a1 1 0 0 1 .707.293l7 7a1 1 0 0 1 0 1.414l-4.586 4.586a1 1 0 0 1-1.414 0l-7-7A1 1 0 0 1 2 6.586V2z"/><path d="M5.5 5a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1zm0 1a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>
                             </button>
-                            <button class="overlay-btn danger" onclick="event.stopPropagation(); event.preventDefault(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book">
+                            <button class="overlay-btn danger" onclick="event.stopPropagation(); event.preventDefault(); openDeleteModal('{{ book.id }}', '{{ book.title | replace("'", "\\'") }}')" title="Delete book" aria-label="Delete book">
                                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
                             </button>
                             <input type="checkbox" class="book-completed-checkbox" title="{{ 'Mark as not completed' if book.completed else 'Mark as completed' }}" onclick="event.stopPropagation(); toggleCompleted('{{ book.id }}', this)" {% if book.completed %}checked{% endif %}>
@@ -647,66 +704,43 @@
                 </a>
                 {% endmacro %}
 
-                {% if continue_reading %}
-                <div class="tag-section continue-section" data-tag="continue">
-                    <div class="tag-header" onclick="toggleSection(this)">
-                        <span class="tag-icon">▼</span>
-                        <span class="tag-title">Continue reading</span>
-                        <span class="tag-count">{{ continue_reading|length }}</span>
-                    </div>
-                    <div class="tag-books">
-                        {% for book in continue_reading %}
-                            {{ book_card(book) }}
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-
-                {% for tag in all_tags %}
-                    {% if tag in books_by_tag %}
-                    <div class="tag-section" data-tag="{{ tag }}">
-                        <div class="tag-header" onclick="toggleSection(this)">
-                            <span class="tag-icon">▼</span>
-                            <span class="tag-title">{{ tag }}</span>
-                            <span class="tag-count">{{ books_by_tag[tag]|length }}</span>
-                        </div>
+                {% macro book_section(key, title, books, extra_class='', collapsed=false) %}
+                <section class="tag-section {{ extra_class }}{% if collapsed %} collapsed{% endif %}" data-tag="{{ key }}">
+                    <button type="button" class="tag-header" onclick="toggleSection(this)"
+                            aria-expanded="{{ 'false' if collapsed else 'true' }}" aria-controls="section-{{ key | replace(' ', '-') }}">
+                        <svg class="tag-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.646 5.646a.5.5 0 0 1 .708 0L8 8.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z" fill="currentColor"/></svg>
+                        <span class="tag-title">{{ title }}</span>
+                        <span class="tag-count">{{ books|length }}</span>
+                        <span class="tag-peek" aria-hidden="true">
+                            {% for book in books[:4] %}
+                                {% if book.cover_image %}<img src="{{ root_path }}{{ book.cover_image }}" alt="" loading="lazy" decoding="async">{% else %}<span class="tag-peek-fallback">{{ book.title[0] }}</span>{% endif %}
+                            {% endfor %}
+                        </span>
+                        <span class="tag-rule" aria-hidden="true"></span>
+                    </button>
+                    <div class="tag-body" id="section-{{ key | replace(' ', '-') }}">
                         <div class="tag-books">
-                            {% for book in books_by_tag[tag] %}
+                            {% for book in books %}
                                 {{ book_card(book) }}
                             {% endfor %}
                         </div>
                     </div>
+                </section>
+                {% endmacro %}
+
+                {% if continue_reading %}
+                    {{ book_section('continue', 'Continue reading', continue_reading, 'continue-section') }}
+                {% endif %}
+                {% for tag in all_tags %}
+                    {% if tag in books_by_tag %}
+                        {{ book_section(tag, tag, books_by_tag[tag]) }}
                     {% endif %}
                 {% endfor %}
-
                 {% if untagged_books %}
-                <div class="tag-section" data-tag="untagged">
-                    <div class="tag-header" onclick="toggleSection(this)">
-                        <span class="tag-icon">▼</span>
-                        <span class="tag-title">Untagged</span>
-                        <span class="tag-count">{{ untagged_books|length }}</span>
-                    </div>
-                    <div class="tag-books">
-                        {% for book in untagged_books %}
-                            {{ book_card(book) }}
-                        {% endfor %}
-                    </div>
-                </div>
+                    {{ book_section('untagged', 'Untagged', untagged_books) }}
                 {% endif %}
-
                 {% if completed_books %}
-                <div class="tag-section completed-section collapsed" data-tag="completed">
-                    <div class="tag-header" onclick="toggleSection(this)">
-                        <span class="tag-icon">▼</span>
-                        <span class="tag-title">Completed</span>
-                        <span class="tag-count">{{ completed_books|length }}</span>
-                    </div>
-                    <div class="tag-books">
-                        {% for book in completed_books %}
-                            {{ book_card(book) }}
-                        {% endfor %}
-                    </div>
-                </div>
+                    {{ book_section('completed', 'Completed', completed_books, 'completed-section', collapsed=true) }}
                 {% endif %}
             </div>
         {% endif %}
@@ -768,23 +802,29 @@
         dropzone.addEventListener('drop', (e) => { if (e.dataTransfer?.files?.length) uploadFile(e.dataTransfer.files[0]); });
         ['dragover', 'drop'].forEach(evt => document.body.addEventListener(evt, (e) => e.preventDefault()));
 
+        function setSectionCollapsed(section, collapsed) {
+            section.classList.toggle('collapsed', collapsed);
+            section.querySelector('.tag-header')?.setAttribute('aria-expanded', String(!collapsed));
+        }
+
         function toggleSection(header) {
             const section = header.closest('.tag-section');
-            section.classList.toggle('collapsed');
-            const tag = section.dataset.tag;
+            setSectionCollapsed(section, !section.classList.contains('collapsed'));
             const collapsed = JSON.parse(localStorage.getItem('collapsedSections') || '{}');
-            collapsed[tag] = section.classList.contains('collapsed');
+            collapsed[section.dataset.tag] = section.classList.contains('collapsed');
             localStorage.setItem('collapsedSections', JSON.stringify(collapsed));
         }
 
         function restoreCollapsedState() {
+            // Saved choices win over defaults both ways (e.g. an expanded "Completed" stays open).
             const collapsed = JSON.parse(localStorage.getItem('collapsedSections') || '{}');
             document.querySelectorAll('.tag-section').forEach(section => {
-                if (collapsed[section.dataset.tag]) section.classList.add('collapsed');
+                if (section.dataset.tag in collapsed) setSectionCollapsed(section, collapsed[section.dataset.tag]);
             });
         }
 
         restoreCollapsedState();
+        requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector('.book-list')?.classList.add('ready')));
 
         let currentBookId = null;
         let allExistingTags = [];
@@ -852,10 +892,17 @@
                 window.location.reload();
             } catch (err) { alert(`Failed: ${err.message}`); }
         }
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTagEditor(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            closeTagEditor();
+            if (typeof closeDeleteModal === 'function') closeDeleteModal();
+        });
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('tagModal')?.addEventListener('click', (e) => { if (e.target.id === 'tagModal') closeTagEditor(); });
             document.getElementById('tagInput')?.addEventListener('input', (e) => { renderTagSuggestions(e.target.value); });
+            document.getElementById('tagInput')?.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); saveTags(); }
+            });
         });
 
         async function toggleCompleted(bookId, checkbox) {
@@ -920,9 +967,11 @@
             deleteBookId = bookId;
             document.getElementById('deleteBookTitle').textContent = bookTitle;
             document.getElementById('deleteModal').classList.add('show');
+            document.querySelector('#deleteModal .modal-btn-cancel').focus();
         }
 
         function closeDeleteModal() {
+            if (!document.getElementById('deleteModal').classList.contains('show')) return;
             deleteBookId = null;
             document.getElementById('deleteModal').classList.remove('show');
         }

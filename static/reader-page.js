@@ -415,6 +415,8 @@ function applyReaderTheme() {
     document.body.classList.toggle('dark-mode', readerSettings.theme === 'dark');
     document.body.classList.toggle('warm-mode', readerSettings.theme === 'warm');
     updateThemeIcon(readerSettings.theme === 'dark');
+    // Keep the Aa panel in sync when the moon button changes the theme
+    updatePresetButtons();
 }
 
 function applyFontSettings() {
@@ -426,6 +428,10 @@ function applyFontSettings() {
 
     // Update the size display
     document.getElementById('fontSizeValue').textContent = currentFontSize;
+    applyReaderTheme();
+}
+
+function updatePresetButtons() {
     document.querySelectorAll('.reader-preset-option').forEach(btn => {
         const selected = btn.dataset.setting === 'theme'
             ? btn.dataset.value === readerSettings.theme
@@ -433,7 +439,6 @@ function applyFontSettings() {
         btn.classList.toggle('active', selected);
         btn.setAttribute('aria-pressed', String(selected));
     });
-    applyReaderTheme();
 }
 
 function saveFontSettings() {
@@ -1892,10 +1897,16 @@ function progressPayload() {
     });
 }
 
+// Skip saves that would send the same position again (load + restore + the
+// 2s fallback, or pagehide + visibilitychange, otherwise post duplicates).
+let lastSavedProgress = null;
+
 function saveProgress(finalSave = false) {
     if (!scrollRestored) return;
     const url = `${READER.root}/api/books/${bookId}/progress`;
     const body = progressPayload();
+    if (body === lastSavedProgress) return;
+    lastSavedProgress = body;
     if (finalSave && navigator.sendBeacon) {
         const sent = navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
         if (sent) return;
@@ -1906,7 +1917,10 @@ function saveProgress(finalSave = false) {
         headers: { 'Content-Type': 'application/json' },
         body,
         keepalive: finalSave
+    }).then(response => {
+        if (!response.ok) lastSavedProgress = null;
     }).catch(err => {
+        lastSavedProgress = null;
         if (!finalSave || !navigator.sendBeacon || !navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }))) {
             console.error('Failed to save progress:', err);
         }
@@ -2228,8 +2242,11 @@ function searchNav(direction) {
 // Input handler with debounce
 document.getElementById('searchInput').addEventListener('input', (e) => {
     if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    const query = e.target.value.trim();
+    // Live search from 3 chars; 2-char queries (e.g. "AI") run on Enter.
+    if (query.length === 2) return;
     searchDebounceTimer = setTimeout(() => {
-        performSearch(e.target.value.trim());
+        performSearch(query);
     }, 300);
 });
 
@@ -2238,7 +2255,14 @@ document.getElementById('searchInput').addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { e.preventDefault(); closeSearch(); }
     else if (e.key === 'Enter') {
         e.preventDefault();
-        e.shiftKey ? searchNav(-1) : searchNav(1);
+        const query = e.target.value.trim();
+        const searchedFor = crossChapterResults && crossChapterResults.query;
+        if (query.length >= 2 && query !== searchedFor) {
+            if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+            performSearch(query);
+        } else {
+            e.shiftKey ? searchNav(-1) : searchNav(1);
+        }
     }
 });
 

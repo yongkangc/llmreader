@@ -36,8 +36,35 @@
     <link rel="stylesheet" href="{{ root_path }}/static/theme.css?v={{ asset_version }}">
     <link rel="stylesheet" href="{{ root_path }}/static/app.css?v={{ asset_version }}">
     <link rel="stylesheet" href="{{ root_path }}/static/tts/tts-player.css?v={{ asset_version }}">
+    <script>
+        // Apply saved reading settings before the chapter renders: no light flash
+        // in dark mode and no reflow (which also shifts restored scroll positions).
+        (function () {
+            var s = null;
+            try { s = JSON.parse(localStorage.getItem('readerSettings:v1')); } catch (e) {}
+            if (!s || s.version !== 1) return;
+            var fonts = { serif: 'Georgia, "Times New Roman", serif', sans: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', mono: '"SF Mono", Menlo, Consolas, monospace' };
+            var num = function (v, min, max) { v = Number(v); return isFinite(v) && v >= min && v <= max ? v : null; };
+            var rules = [];
+            var size = num(s.fontSize, 12, 28), measure = num(s.measure, 50, 82), lh = num(s.lineHeight, 1.4, 2);
+            if (size) rules.push('font-size:' + size + 'px');
+            if (measure) rules.push('max-width:' + measure + 'ch');
+            if (lh) rules.push('line-height:' + lh);
+            if (fonts[s.fontFamily]) rules.push('font-family:' + fonts[s.fontFamily]);
+            if (rules.length) document.write('<style id="earlyReaderSettings">#chapterContent{' + rules.join(';') + '}</style>');
+        })();
+    </script>
 </head>
 <body class="page-reader">
+    <script>
+        (function () {
+            var theme = null;
+            try { theme = (JSON.parse(localStorage.getItem('readerSettings:v1')) || {}).theme; } catch (e) {}
+            if (!theme) theme = localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
+            if (theme === 'dark') document.body.classList.add('dark-mode');
+            else if (theme === 'warm') document.body.classList.add('warm-mode');
+        })();
+    </script>
     <!-- Sidebar Toggle Button -->
     <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Toggle sidebar" aria-label="Toggle table of contents" aria-controls="sidebar" aria-expanded="true">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" id="sidebarIcon">
@@ -263,9 +290,9 @@
 
         <!-- TTS Player Bar -->
         <div class="tts-player" id="ttsPlayer">
-            <button class="tts-btn" id="ttsPlayPause" onclick="ttsPlayPause()" title="Play/Pause">⏸</button>
-            <button class="tts-btn" onclick="ttsPrevParagraph()" title="Previous paragraph">◀◀</button>
-            <button class="tts-btn" onclick="ttsNextParagraph()" title="Next paragraph">▶▶</button>
+            <button class="tts-btn" id="ttsPlayPause" onclick="ttsPlayPause()" title="Play/Pause" aria-label="Play or pause">⏸</button>
+            <button class="tts-btn" onclick="ttsPrevParagraph()" title="Previous paragraph" aria-label="Previous paragraph">◀◀</button>
+            <button class="tts-btn" onclick="ttsNextParagraph()" title="Next paragraph" aria-label="Next paragraph">▶▶</button>
             <div class="tts-progress-container">
                 <div class="tts-progress" id="ttsProgress">
                     <div class="tts-progress-fill" id="ttsProgressFill">
@@ -274,9 +301,9 @@
                 </div>
             </div>
             <span class="tts-time" id="ttsTime">0:00 / 0:00</span>
-            <button class="tts-speed" id="ttsSpeed" onclick="toggleSpeedMenu()">1.0x</button>
-            <button class="tts-pitch" id="ttsPitch" onclick="togglePitchMenu()" title="Pitch">1.0</button>
-            <button class="tts-btn tts-close" onclick="closeTtsPlayer()" title="Close">✕</button>
+            <button class="tts-speed" id="ttsSpeed" onclick="toggleSpeedMenu()" title="Speed" aria-label="Playback speed">1.0x</button>
+            <button class="tts-pitch" id="ttsPitch" onclick="togglePitchMenu()" title="Pitch" aria-label="Voice pitch">1.0</button>
+            <button class="tts-btn tts-close" onclick="closeTtsPlayer()" title="Close" aria-label="Close read-aloud player">✕</button>
         </div>
 
         <div class="reading-progress" id="readingProgress" role="progressbar" aria-label="Book reading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
